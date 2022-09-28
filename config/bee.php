@@ -12,4 +12,5 @@ return [
     */
     'username' => env('Bee_USERNAME', ''),
     'password' => env('Bee_PASSWORD', ''),
+    'url' => env('BEE_URL', ''),
 ];
