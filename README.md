@@ -36,3 +36,8 @@ foreach ($rentals as $rental) {
 	$bee['id'];
 }
 ```
+
+
+## Sponsor
+
+[💚️ Become a Sponsor](https://github.com/sponsors/AbdullahGhanem)
