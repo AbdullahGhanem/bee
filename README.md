@@ -1,5 +1,7 @@
 # Bee
 
+[![Latest Stable Version](https://poser.pugx.org/ghanem/bee/v/stable.svg)](https://packagist.org/packages/ghanem/bee) [![License](https://poser.pugx.org/ghanem/bee/license.svg)](https://packagist.org/packages/ghanem/bee) [![Total Downloads](https://poser.pugx.org/ghanem/bee/downloads.svg)](https://packagist.org/packages/ghanem/bee)
+
 A Laravel package that provides an interface to the Bee payment services API.
 
 ## Requirements
