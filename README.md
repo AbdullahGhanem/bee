@@ -129,6 +129,32 @@ $categories = Bee::getCategoryList('ar');
 $services = Bee::getServiceList('ar');
 ```
 
+## Changelog
+
+### Done
+
+- [x] Bee API integration (services, categories, providers)
+- [x] Transaction inquiry and payment
+- [x] Service charge calculation (forward and reverse)
+- [x] Bills amount retrieval
+- [x] Account info
+- [x] Transaction lookup by ID and external ID
+- [x] Multi-language support (en, ar, etc.)
+- [x] Facade with full IDE autocompletion
+- [x] Laravel 10, 11, and 12 support
+- [x] PHP 8.1+ with modern type hints
+- [x] Full test coverage (41 tests)
+
+### Planned
+
+- [ ] Retry mechanism for failed API requests
+- [ ] Request/response logging
+- [ ] Caching for service and category lists
+- [ ] Webhook support for transaction status updates
+- [ ] DTOs for API responses instead of raw arrays/collections
+- [ ] Rate limiting support
+- [ ] Async/queue support for batch transactions
+
 ## Testing
 
 ```bash
