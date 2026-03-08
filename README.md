@@ -129,6 +129,147 @@ $categories = Bee::getCategoryList('ar');
 $services = Bee::getServiceList('ar');
 ```
 
+### DTOs (Typed Responses)
+
+Use `*Dto` methods for typed response objects instead of raw arrays/collections:
+
+```php
+use Ghanem\Bee\DTOs\ApiResponse;
+use Ghanem\Bee\DTOs\TransactionResult;
+use Ghanem\Bee\DTOs\ServiceChargeResult;
+
+// API response DTO
+$response = Bee::getCategoryListDto(); // returns ApiResponse
+$response->success;    // bool
+$response->data;       // array
+$response->statusCode; // int
+$response->get('categories.0.name'); // dot notation access
+
+// Transaction DTO
+$tx = Bee::getTransactionDto(123); // returns TransactionResult
+$tx->transactionId; // ?int
+$tx->amount;        // ?float
+$tx->serviceCharge; // ?float
+$tx->totalAmount;   // ?float
+
+$inquiry = Bee::transactionInquiryDto($data);  // TransactionResult
+$payment = Bee::transactionPaymentDto($data);  // TransactionResult
+
+// Service charge DTO
+$charge = Bee::calculateServiceChargeDto([
+    'service_id' => 10,
+    'amount' => 100,
+]); // returns ServiceChargeResult
+$charge->serviceId;     // int
+$charge->amount;        // float
+$charge->serviceCharge; // float
+$charge->totalAmount;   // float
+```
+
+### Retry Mechanism
+
+Failed API requests are automatically retried with exponential backoff:
+
+```env
+BEE_RETRY_TRIES=3       # Number of retry attempts
+BEE_RETRY_DELAY=100     # Initial delay in milliseconds
+BEE_RETRY_MULTIPLIER=2  # Backoff multiplier
+```
+
+### Request/Response Logging
+
+Enable logging to debug API calls. Credentials are automatically redacted:
+
+```env
+BEE_LOG_ENABLED=true
+BEE_LOG_CHANNEL=stack   # Optional: specific log channel
+```
+
+### Caching
+
+Service and category lists are automatically cached to reduce API calls:
+
+```env
+BEE_CACHE_ENABLED=true    # Enabled by default
+BEE_CACHE_TTL=3600        # Cache lifetime in seconds
+BEE_CACHE_STORE=redis     # Optional: specific cache store
+```
+
+```php
+// Clear all cached data
+Bee::clearCache();
+
+// Clear specific cache key
+Bee::clearCache('category_list_en');
+```
+
+### Rate Limiting
+
+Limit the number of API requests per minute:
+
+```env
+BEE_RATE_LIMIT_ENABLED=true
+BEE_RATE_LIMIT_MAX=60      # Max requests per minute
+```
+
+### Webhooks
+
+Receive transaction status updates via webhooks:
+
+```env
+BEE_WEBHOOK_ENABLED=true
+BEE_WEBHOOK_PATH=bee/webhook
+BEE_WEBHOOK_SECRET=your-secret  # Optional: signature validation
+```
+
+Listen for webhook events in your application:
+
+```php
+use Ghanem\Bee\Events\BeeWebhookReceived;
+use Ghanem\Bee\Events\TransactionStatusUpdated;
+
+// Listen to all webhook events
+Event::listen(BeeWebhookReceived::class, function ($event) {
+    // $event->event   - event name (e.g. 'transaction.completed')
+    // $event->payload - full webhook payload
+});
+
+// Listen specifically to transaction status changes
+Event::listen(TransactionStatusUpdated::class, function ($event) {
+    // $event->transactionId
+    // $event->status
+    // $event->payload
+});
+```
+
+### Async / Queue Support
+
+Process transactions asynchronously using Laravel queues:
+
+```env
+BEE_QUEUE_CONNECTION=redis   # Optional: queue connection
+BEE_QUEUE_NAME=payments      # Optional: queue name
+```
+
+```php
+// Dispatch a single payment to the queue
+Bee::transactionPaymentAsync([
+    'account_number' => '12345',
+    'service_id' => 10,
+    'amount' => 100,
+]);
+
+// Batch multiple transactions
+$batch = Bee::batchTransactions([
+    ['action' => 'payment', 'data' => ['service_id' => 10, 'amount' => 100]],
+    ['action' => 'inquiry', 'data' => ['service_id' => 11, 'account_number' => '123']],
+    ['action' => 'payment', 'data' => ['service_id' => 12, 'amount' => 200], 'lang' => 'ar'],
+]);
+
+// Batch with callback event
+Bee::batchTransactions($transactions, App\Events\TransactionProcessed::class);
+```
+
 ## Changelog
 
 ### Done
@@ -143,17 +284,14 @@ $services = Bee::getServiceList('ar');
 - [x] Facade with full IDE autocompletion
 - [x] Laravel 10, 11, and 12 support
 - [x] PHP 8.1+ with modern type hints
-- [x] Full test coverage (41 tests)
-
-### Planned
-
-- [ ] Retry mechanism for failed API requests
-- [ ] Request/response logging
-- [ ] Caching for service and category lists
-- [ ] Webhook support for transaction status updates
-- [ ] DTOs for API responses instead of raw arrays/collections
-- [ ] Rate limiting support
-- [ ] Async/queue support for batch transactions
+- [x] Full test coverage (96 tests)
+- [x] Retry mechanism for failed API requests
+- [x] Request/response logging
+- [x] Caching for service and category lists
+- [x] Webhook support for transaction status updates
+- [x] DTOs for API responses (ApiResponse, TransactionResult, ServiceChargeResult)
+- [x] Rate limiting support
+- [x] Async/queue support for batch transactions
 
 ## Testing
 

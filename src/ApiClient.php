@@ -2,31 +2,68 @@
 
 namespace Ghanem\Bee;
 
+use Ghanem\Bee\DTOs\ApiResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class ApiClient
 {
     public function request(string $endpoint, array $params = []): Collection|array
     {
+        if ($this->isRateLimited()) {
+            return ['error' => 'Rate limit exceeded', 'status_code' => 429];
+        }
+
         $params['login'] = config('bee.username');
         $params['password'] = config('bee.password');
         $link = config('bee.url') . $endpoint;
 
+        $this->logRequest($endpoint, $params);
+
+        $retryConfig = config('bee.retry', []);
+        $tries = $retryConfig['tries'] ?? 3;
+        $delay = $retryConfig['delay'] ?? 100;
+        $multiplier = $retryConfig['multiplier'] ?? 2;
+
         $response = Http::acceptJson()
             ->contentType('application/json;charset=UTF-8')
+            ->retry($tries, $delay, function ($exception, $request) use ($multiplier) {
+                return $exception instanceof \Illuminate\Http\Client\ConnectionException;
+            }, throw: false)
             ->post($link, $params);
 
+        $this->hitRateLimiter();
+
         if ($response->ok()) {
-            return collect($response->json());
+            $data = $response->json();
+            $this->logResponse($endpoint, $data, $response->status());
+
+            return collect($data);
         }
 
-        return [
+        $errorData = [
             'params' => $params,
             'link' => $link,
             'status_code' => $response->status(),
             ...$response->json() ?? [],
         ];
+        $this->logResponse($endpoint, $errorData, $response->status(), true);
+
+        return $errorData;
+    }
+
+    public function requestDto(string $endpoint, array $params = []): ApiResponse
+    {
+        $result = $this->request($endpoint, $params);
+
+        if ($result instanceof Collection) {
+            return ApiResponse::fromSuccess($result->toArray());
+        }
+
+        return ApiResponse::fromError($result, $result['status_code'] ?? 500);
     }
 
     public function getProviderList(int $categoryId = 2, string $lang = 'en'): Collection|array
@@ -42,57 +79,67 @@ class ApiClient
 
     public function getServiceList(string $lang = 'en'): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => '1',
-            'action' => 'GetServiceList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 'd'],
-        ]);
+        return $this->cached("service_list_{$lang}", function () use ($lang) {
+            return $this->request('service', [
+                'terminal_id' => '1',
+                'action' => 'GetServiceList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['s' => 'd'],
+            ]);
+        });
     }
 
     public function getServiceInputParameterList(string $lang = 'en'): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => '1',
-            'action' => 'GetServiceInputParameterList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 'd'],
-        ]);
+        return $this->cached("service_input_params_{$lang}", function () use ($lang) {
+            return $this->request('service', [
+                'terminal_id' => '1',
+                'action' => 'GetServiceInputParameterList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['s' => 'd'],
+            ]);
+        });
     }
 
     public function getServiceOutputParameterList(string $lang = 'en'): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => '1',
-            'action' => 'GetServiceOutputParameterList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 'd'],
-        ]);
+        return $this->cached("service_output_params_{$lang}", function () use ($lang) {
+            return $this->request('service', [
+                'terminal_id' => '1',
+                'action' => 'GetServiceOutputParameterList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['s' => 'd'],
+            ]);
+        });
     }
 
     public function getCategoryList(string $lang = 'en'): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => '1',
-            'action' => 'GetCategoryList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 1],
-        ]);
+        return $this->cached("category_list_{$lang}", function () use ($lang) {
+            return $this->request('service', [
+                'terminal_id' => '1',
+                'action' => 'GetCategoryList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['s' => 1],
+            ]);
+        });
     }
 
     public function getCategoryServiceList(string $lang = 'en'): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => '1',
-            'action' => 'GetCategoryServiceList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 1],
-        ]);
+        return $this->cached("category_service_list_{$lang}", function () use ($lang) {
+            return $this->request('service', [
+                'terminal_id' => '1',
+                'action' => 'GetCategoryServiceList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['s' => 1],
+            ]);
+        });
     }
 
     public function getTransaction(int|string $id, string $type = 'id', string $lang = 'en'): Collection|array
@@ -201,11 +248,97 @@ class ApiClient
         return $data;
     }
 
+    public function clearCache(?string $key = null): void
+    {
+        $store = Cache::store(config('bee.cache.store'));
+        $prefix = config('bee.cache.prefix', 'bee_');
+
+        if ($key) {
+            $store->forget($prefix . $key);
+            return;
+        }
+
+        $cacheKeys = [
+            'category_list_en', 'category_list_ar',
+            'category_service_list_en', 'category_service_list_ar',
+            'service_list_en', 'service_list_ar',
+            'service_input_params_en', 'service_input_params_ar',
+            'service_output_params_en', 'service_output_params_ar',
+        ];
+
+        foreach ($cacheKeys as $cacheKey) {
+            $store->forget($prefix . $cacheKey);
+        }
+    }
+
     protected function getServiceChargeObject(array $chargeList, float $amount): ?array
     {
         return collect($chargeList)
             ->where('from', '<=', $amount)
             ->where('to', '>=', $amount)
             ->first();
+    }
+
+    protected function cached(string $key, callable $callback): Collection|array
+    {
+        if (! config('bee.cache.enabled', true)) {
+            return $callback();
+        }
+
+        $store = Cache::store(config('bee.cache.store'));
+        $prefix = config('bee.cache.prefix', 'bee_');
+        $ttl = config('bee.cache.ttl', 3600);
+
+        return $store->remember($prefix . $key, $ttl, $callback);
+    }
+
+    protected function logRequest(string $endpoint, array $params): void
+    {
+        if (! config('bee.logging.enabled', false)) {
+            return;
+        }
+
+        $safeParams = $params;
+        unset($safeParams['login'], $safeParams['password']);
+
+        Log::channel(config('bee.logging.channel'))
+            ->info('Bee API Request', [
+                'endpoint' => $endpoint,
+                'params' => $safeParams,
+            ]);
+    }
+
+    protected function logResponse(string $endpoint, array $data, int $statusCode, bool $isError = false): void
+    {
+        if (! config('bee.logging.enabled', false)) {
+            return;
+        }
+
+        $method = $isError ? 'error' : 'info';
+
+        Log::channel(config('bee.logging.channel'))
+            ->$method('Bee API Response', [
+                'endpoint' => $endpoint,
+                'status_code' => $statusCode,
+                'response' => $data,
+            ]);
+    }
+
+    protected function isRateLimited(): bool
+    {
+        if (! config('bee.rate_limit.enabled', false)) {
+            return false;
+        }
+
+        return RateLimiter::tooManyAttempts('bee-api', config('bee.rate_limit.max_attempts', 60));
+    }
+
+    protected function hitRateLimiter(): void
+    {
+        if (! config('bee.rate_limit.enabled', false)) {
+            return;
+        }
+
+        RateLimiter::hit('bee-api', 60);
     }
 }

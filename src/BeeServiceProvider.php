@@ -2,6 +2,7 @@
 
 namespace Ghanem\Bee;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class BeeServiceProvider extends ServiceProvider
@@ -20,5 +21,18 @@ class BeeServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/bee.php' => config_path('bee.php'),
         ], 'bee-config');
+
+        $this->registerWebhookRoute();
+    }
+
+    protected function registerWebhookRoute(): void
+    {
+        if (! config('bee.webhook.enabled', false)) {
+            return;
+        }
+
+        Route::middleware(config('bee.webhook.middleware', ['api']))
+            ->post(config('bee.webhook.path', 'bee/webhook'), [Http\BeeWebhookController::class, 'handle'])
+            ->name('bee.webhook');
     }
 }
