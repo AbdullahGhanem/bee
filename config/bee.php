@@ -3,14 +3,17 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | api key for themoviedb
+    | Bee API Credentials
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the log settings for when a location is not found
-    | for the IP provided.
+    | Configure your Bee API credentials here. You can obtain these from
+    | the Bee API dashboard.
     |
     */
-    'username' => env('Bee_USERNAME', ''),
-    'password' => env('Bee_PASSWORD', ''),
+
+    'username' => env('BEE_USERNAME', ''),
+
+    'password' => env('BEE_PASSWORD', ''),
+
     'url' => env('BEE_URL', ''),
 ];

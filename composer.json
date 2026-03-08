@@ -1,24 +1,26 @@
 {
     "name": "ghanem/bee",
     "type": "library",
-    "description": "A package that provides an interface between Laravel and Bee API, includes Gifs.",
-    "keywords": ["Laravel", "PHP", "Bee", "API", "Gif"],
+    "description": "A Laravel package that provides an interface to the Bee payment services API.",
+    "keywords": ["Laravel", "PHP", "Bee", "API", "Payment"],
     "homepage": "https://github.com/abdullahghanem/bee",
     "license": "MIT",
     "authors": [
         {
-            "name": "abdullah ghanem",
+            "name": "Abdullah Ghanem",
             "email": "3bdullah.ghanem@gmail.com",
             "role": "Developer"
         }
     ],
     "require": {
-        "php": "^7.3|^8.0"
-    },   
-     "require-dev": {
-        "orchestra/testbench": "^6.0",
-        "phpunit/phpunit": "^9.5"
-    }, 
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
     "autoload": {
         "psr-4": {
             "Ghanem\\Bee\\": "src/"
@@ -26,7 +28,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Ghanem\\Bee\\Tests\\": "tests"
+            "Ghanem\\Bee\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -38,9 +40,12 @@
                 "Bee": "Ghanem\\Bee\\Facades\\Bee"
             }
         }
-    }, 
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    },
     "scripts": {
         "test": "vendor/bin/phpunit",
         "test-f": "vendor/bin/phpunit --filter"

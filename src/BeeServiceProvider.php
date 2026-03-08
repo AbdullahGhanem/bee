@@ -6,30 +6,19 @@ use Illuminate\Support\ServiceProvider;
 
 class BeeServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-    public function register()
+    public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/bee.php', 'bee');
 
-        $this->app->bind('ghanem-bee', function () {
-            return new BeeController;
+        $this->app->singleton('ghanem-bee', function () {
+            return new BeeService();
         });
-
     }
-    
-    /**
-     * Bootstrap any application services.
-     *
-     * @return void
-     */
-    public function boot()
+
+    public function boot(): void
     {
         $this->publishes([
             __DIR__ . '/../config/bee.php' => config_path('bee.php'),
-        ], 'config');
+        ], 'bee-config');
     }
 }
