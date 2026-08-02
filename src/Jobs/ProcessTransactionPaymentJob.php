@@ -20,7 +20,7 @@ class ProcessTransactionPaymentJob implements ShouldQueue
 
     public function __construct(
         public readonly array $data,
-        public readonly string $lang = 'en',
+        public readonly ?string $lang = null,
     ) {
         $this->tries = config('bee.retry.tries', 3);
         $this->backoff = config('bee.retry.delay', 100);

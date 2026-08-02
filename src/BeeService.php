@@ -21,47 +21,47 @@ class BeeService
     // Standard methods (return Collection|array for backward compatibility)
     // -------------------------------------------------------------------------
 
-    public function getCategoryList(string $lang = 'en'): Collection|array
+    public function getCategoryList(?string $lang = null): Collection|array
     {
         return $this->client->getCategoryList($lang);
     }
 
-    public function getCategoryServiceList(string $lang = 'en'): Collection|array
+    public function getCategoryServiceList(?string $lang = null): Collection|array
     {
         return $this->client->getCategoryServiceList($lang);
     }
 
-    public function getProviderList(int $categoryId = 2, string $lang = 'en'): Collection|array
+    public function getProviderList(int $categoryId = 2, ?string $lang = null): Collection|array
     {
         return $this->client->getProviderList($categoryId, $lang);
     }
 
-    public function getServiceList(string $lang = 'en'): Collection|array
+    public function getServiceList(?string $lang = null): Collection|array
     {
         return $this->client->getServiceList($lang);
     }
 
-    public function getServiceInputParameterList(string $lang = 'en'): Collection|array
+    public function getServiceInputParameterList(?string $lang = null): Collection|array
     {
         return $this->client->getServiceInputParameterList($lang);
     }
 
-    public function getServiceOutputParameterList(string $lang = 'en'): Collection|array
+    public function getServiceOutputParameterList(?string $lang = null): Collection|array
     {
         return $this->client->getServiceOutputParameterList($lang);
     }
 
-    public function getTransaction(int|string $id, string $type = 'id', string $lang = 'en'): Collection|array
+    public function getTransaction(int|string $id, string $type = 'id', ?string $lang = null): Collection|array
     {
         return $this->client->getTransaction($id, $type, $lang);
     }
 
-    public function getAccountInfo(string $lang = 'en'): Collection|array
+    public function getAccountInfo(?string $lang = null): Collection|array
     {
         return $this->client->getAccountInfo($lang);
     }
 
-    public function transactionInquiry(array $data, string $lang = 'en'): Collection|array
+    public function transactionInquiry(array $data, ?string $lang = null): Collection|array
     {
         $providerList = $this->client->getProviderList(2, $lang);
         $data['service_version'] = $providerList['data']['service_version'];
@@ -69,7 +69,7 @@ class BeeService
         return $this->client->transactionInquiry($data, $lang);
     }
 
-    public function transactionPayment(array $data, string $lang = 'en'): Collection|array
+    public function transactionPayment(array $data, ?string $lang = null): Collection|array
     {
         $providerList = $this->client->getProviderList(2, $lang);
         $data['service_version'] = $providerList['data']['service_version'];
@@ -96,10 +96,9 @@ class BeeService
     // DTO methods (return typed DTOs)
     // -------------------------------------------------------------------------
 
-    public function getCategoryListDto(string $lang = 'en'): ApiResponse
+    public function getCategoryListDto(?string $lang = null): ApiResponse
     {
         return $this->client->requestDto('service', [
-            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => 'GetCategoryList',
             'version' => 2,
             'language' => $lang,
@@ -107,10 +106,9 @@ class BeeService
         ]);
     }
 
-    public function getServiceListDto(string $lang = 'en'): ApiResponse
+    public function getServiceListDto(?string $lang = null): ApiResponse
     {
         return $this->client->requestDto('service', [
-            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => 'GetServiceList',
             'version' => 2,
             'language' => $lang,
@@ -118,10 +116,9 @@ class BeeService
         ]);
     }
 
-    public function getTransactionDto(int|string $id, string $type = 'id', string $lang = 'en'): TransactionResult
+    public function getTransactionDto(int|string $id, string $type = 'id', ?string $lang = null): TransactionResult
     {
         $response = $this->client->requestDto('report', [
-            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => $type === 'external_id' ? 'GetTransactionByExternalId' : 'GetTransactionDetails',
             'version' => 2,
             'language' => $lang,
@@ -131,7 +128,7 @@ class BeeService
         return TransactionResult::fromApiResponse($response);
     }
 
-    public function transactionInquiryDto(array $data, string $lang = 'en'): TransactionResult
+    public function transactionInquiryDto(array $data, ?string $lang = null): TransactionResult
     {
         $result = $this->transactionInquiry($data, $lang);
         $apiResponse = $result instanceof Collection
@@ -141,7 +138,7 @@ class BeeService
         return TransactionResult::fromApiResponse($apiResponse);
     }
 
-    public function transactionPaymentDto(array $data, string $lang = 'en'): TransactionResult
+    public function transactionPaymentDto(array $data, ?string $lang = null): TransactionResult
     {
         $result = $this->transactionPayment($data, $lang);
         $apiResponse = $result instanceof Collection
@@ -165,7 +162,7 @@ class BeeService
     // Async / Queue methods
     // -------------------------------------------------------------------------
 
-    public function transactionPaymentAsync(array $data, string $lang = 'en'): void
+    public function transactionPaymentAsync(array $data, ?string $lang = null): void
     {
         ProcessTransactionPaymentJob::dispatch($data, $lang);
     }
@@ -176,7 +173,7 @@ class BeeService
             return new BatchTransactionJob(
                 action: $tx['action'] ?? 'payment',
                 data: $tx['data'],
-                lang: $tx['lang'] ?? 'en',
+                lang: $tx['lang'] ?? null,
                 callbackEvent: $callbackEvent,
             );
         }, $transactions);

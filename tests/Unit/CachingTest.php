@@ -133,6 +133,24 @@ class CachingTest extends TestCase
         Http::assertSentCount(3);
     }
 
+    public function test_a_business_failure_response_is_not_cached(): void
+    {
+        // Regression guard: with throwing disabled, request() returns a
+        // plain array for a business failure. cached() must not store it —
+        // otherwise a transient error (e.g. rate limit, 1034) would poison
+        // every read of that list for the full TTL.
+        $this->app['config']->set('bee.errors.throw', false);
+
+        Http::fake([
+            'https://api.bee.test/service' => Http::response(['success' => false, 'code' => 2000], 200),
+        ]);
+
+        Bee::getCategoryList();
+        Bee::getCategoryList();
+
+        Http::assertSentCount(2);
+    }
+
     public function test_transactions_are_not_cached(): void
     {
         Http::fake([

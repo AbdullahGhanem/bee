@@ -3,6 +3,7 @@
 namespace Ghanem\Bee\Tests\Unit;
 
 use Ghanem\Bee\ApiClient;
+use Ghanem\Bee\Exceptions\BeeValidationException;
 use Ghanem\Bee\Facades\Bee;
 use Ghanem\Bee\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
@@ -45,5 +46,34 @@ class TerminalIdTest extends TestCase
 
         Http::assertSentCount(3);
         Http::assertSent(fn ($request) => $request['terminal_id'] === 'DTO-T-42');
+    }
+
+    public function test_empty_terminal_id_throws_the_documented_validation_exception(): void
+    {
+        // The global TestCase fixture stubs a non-empty terminal_id so every
+        // other test can call the action methods without tripping this
+        // guard — which meant this branch had zero coverage. Override it
+        // back to empty here to exercise it directly.
+        config()->set('bee.terminal_id', '');
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        try {
+            app(ApiClient::class)->getAccountInfo();
+            $this->fail('Expected BeeValidationException');
+        } catch (BeeValidationException $e) {
+            $this->assertSame(1024, $e->apiCode);
+        }
+    }
+
+    public function test_terminal_id_of_zero_string_is_a_legitimate_value(): void
+    {
+        // empty('0') === true in PHP, so a naive empty() check would wrongly
+        // reject a real terminal ID of "0".
+        config()->set('bee.terminal_id', '0');
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        app(ApiClient::class)->getAccountInfo();
+
+        Http::assertSent(fn ($request) => $request['terminal_id'] === '0');
     }
 }

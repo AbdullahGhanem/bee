@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class ApiClient
 {
+    /**
+     * terminal_id and language are resolved and injected here — the same
+     * choke point as login/password — so no caller (action method, DTO
+     * method, or a raw ->request() call) can forget them or hardcode a
+     * literal.
+     */
     public function request(string $endpoint, array $params = []): Collection|array
     {
         if ($this->isRateLimited()) {
@@ -23,6 +29,8 @@ class ApiClient
             ]);
         }
 
+        $params['terminal_id'] = $this->resolveTerminalId($params['terminal_id'] ?? null);
+        $params['language'] = $this->resolveLanguage($params['language'] ?? null);
         $params['login'] = config('bee.username');
         $params['password'] = config('bee.password');
         $link = config('bee.url') . $endpoint;
@@ -44,14 +52,17 @@ class ApiClient
         $this->hitRateLimiter();
 
         if ($response->ok()) {
+            // json() is null for an empty body or a non-JSON (e.g. WAF/proxy
+            // HTML) body, which folds into [] here and is correctly treated
+            // as a failure below — nothing affirmatively said success.
             $data = $response->json() ?? [];
-            $code = $this->extractApiCode($data);
-            $isBusinessFailure = ($data['success'] ?? null) === false || $code !== null;
+            $success = $data['success'] ?? null;
+            $isBusinessFailure = $success !== true;
 
             $this->logResponse($endpoint, $data, $response->status(), $isBusinessFailure);
 
             if ($isBusinessFailure) {
-                return $this->handleFailure($code, $data);
+                return $this->handleFailure($this->extractApiCode($data), $data);
             }
 
             return collect($data);
@@ -69,11 +80,12 @@ class ApiClient
     }
 
     /**
-     * The API returns HTTP 200 even for business failures (insufficient
-     * balance, transaction in progress, etc). The error code can show up
-     * under different keys depending on the failure path, so every
-     * plausible field is checked. The PDF's only full JSON sample (FAQ
-     * Q17, page 21) is a success response and carries none of these keys.
+     * Only used to pick WHICH exception to throw once a response is already
+     * known to be a failure (see request()) — never to decide IF it failed.
+     * The error code can show up under different keys depending on the
+     * failure path, so every plausible field is checked. The PDF's only
+     * full JSON sample (FAQ Q17, page 21) is a success response and carries
+     * none of these keys.
      */
     protected function extractApiCode(array $data): ?int
     {
@@ -107,7 +119,8 @@ class ApiClient
     {
         $terminalId ??= config('bee.terminal_id');
 
-        if (empty($terminalId)) {
+        // Not empty(): "0" is a legitimate terminal ID, not a falsy absence.
+        if ($terminalId === null || $terminalId === '') {
             throw BeeException::fromCode(ErrorCode::TerminalIdRequired->value);
         }
 
@@ -133,21 +146,19 @@ class ApiClient
     public function getProviderList(int $categoryId = 2, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('service', [
-            'terminal_id' => $this->resolveTerminalId($terminalId),
+            'terminal_id' => $terminalId,
             'action' => 'GetProviderList',
             'version' => 2,
-            'language' => $this->resolveLanguage($lang),
+            'language' => $lang,
             'data' => ['service_version' => 0],
         ]);
     }
 
     public function getServiceList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        $lang = $this->resolveLanguage($lang);
-
-        return $this->cached("service_list_{$lang}", function () use ($lang, $terminalId) {
+        return $this->cached('service_list_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => $this->resolveTerminalId($terminalId),
+                'terminal_id' => $terminalId,
                 'action' => 'GetServiceList',
                 'version' => 2,
                 'language' => $lang,
@@ -158,11 +169,9 @@ class ApiClient
 
     public function getServiceInputParameterList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        $lang = $this->resolveLanguage($lang);
-
-        return $this->cached("service_input_params_{$lang}", function () use ($lang, $terminalId) {
+        return $this->cached('service_input_params_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => $this->resolveTerminalId($terminalId),
+                'terminal_id' => $terminalId,
                 'action' => 'GetServiceInputParameterList',
                 'version' => 2,
                 'language' => $lang,
@@ -173,11 +182,9 @@ class ApiClient
 
     public function getServiceOutputParameterList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        $lang = $this->resolveLanguage($lang);
-
-        return $this->cached("service_output_params_{$lang}", function () use ($lang, $terminalId) {
+        return $this->cached('service_output_params_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => $this->resolveTerminalId($terminalId),
+                'terminal_id' => $terminalId,
                 'action' => 'GetServiceOutputParameterList',
                 'version' => 2,
                 'language' => $lang,
@@ -188,11 +195,9 @@ class ApiClient
 
     public function getCategoryList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        $lang = $this->resolveLanguage($lang);
-
-        return $this->cached("category_list_{$lang}", function () use ($lang, $terminalId) {
+        return $this->cached('category_list_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => $this->resolveTerminalId($terminalId),
+                'terminal_id' => $terminalId,
                 'action' => 'GetCategoryList',
                 'version' => 2,
                 'language' => $lang,
@@ -203,11 +208,9 @@ class ApiClient
 
     public function getCategoryServiceList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        $lang = $this->resolveLanguage($lang);
-
-        return $this->cached("category_service_list_{$lang}", function () use ($lang, $terminalId) {
+        return $this->cached('category_service_list_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => $this->resolveTerminalId($terminalId),
+                'terminal_id' => $terminalId,
                 'action' => 'GetCategoryServiceList',
                 'version' => 2,
                 'language' => $lang,
@@ -222,10 +225,10 @@ class ApiClient
         $dataKey = $type === 'external_id' ? 'external_id' : 'transaction_id';
 
         return $this->request('report', [
-            'terminal_id' => $this->resolveTerminalId($terminalId),
+            'terminal_id' => $terminalId,
             'action' => $action,
             'version' => 2,
-            'language' => $this->resolveLanguage($lang),
+            'language' => $lang,
             'data' => [$dataKey => $id],
         ]);
     }
@@ -233,10 +236,10 @@ class ApiClient
     public function getAccountInfo(?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('report', [
-            'terminal_id' => $this->resolveTerminalId($terminalId),
+            'terminal_id' => $terminalId,
             'action' => 'GetAccountInfo',
             'version' => 2,
-            'language' => $this->resolveLanguage($lang),
+            'language' => $lang,
             'data' => ['s' => 'd'],
         ]);
     }
@@ -244,10 +247,10 @@ class ApiClient
     public function transactionInquiry(array $data, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('transaction', [
-            'terminal_id' => $this->resolveTerminalId($terminalId),
+            'terminal_id' => $terminalId,
             'action' => 'TransactionInquiry',
             'version' => 2,
-            'language' => $this->resolveLanguage($lang),
+            'language' => $lang,
             'data' => [
                 'service_version' => $data['service_version'] ?? 2,
                 'account_number' => $data['account_number'] ?? 2,
@@ -260,10 +263,10 @@ class ApiClient
     public function transactionPayment(array $data, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('transaction', [
-            'terminal_id' => $this->resolveTerminalId($terminalId),
+            'terminal_id' => $terminalId,
             'action' => 'TransactionPayment',
             'version' => 2,
-            'language' => $this->resolveLanguage($lang),
+            'language' => $lang,
             'data' => [
                 'service_version' => $data['service_version'] ?? 2,
                 'account_number' => $data['account_number'] ?? 2,
@@ -360,10 +363,23 @@ class ApiClient
         }
 
         $store = Cache::store(config('bee.cache.store'));
-        $prefix = config('bee.cache.prefix', 'bee_');
-        $ttl = config('bee.cache.ttl', 3600);
+        $fullKey = config('bee.cache.prefix', 'bee_') . $key;
 
-        return $store->remember($prefix . $key, $ttl, $callback);
+        if ($store->has($fullKey)) {
+            return $store->get($fullKey);
+        }
+
+        $result = $callback();
+
+        // Only a Collection means request() actually succeeded — a business
+        // failure (bee.errors.throw = false) or a transport error both come
+        // back as a plain array and must never be cached: a transient error
+        // would otherwise poison every read for the full TTL.
+        if ($result instanceof Collection) {
+            $store->put($fullKey, $result, config('bee.cache.ttl', 3600));
+        }
+
+        return $result;
     }
 
     protected function logRequest(string $endpoint, array $params): void

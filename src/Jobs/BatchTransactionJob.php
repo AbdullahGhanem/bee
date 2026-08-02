@@ -20,7 +20,7 @@ class BatchTransactionJob implements ShouldQueue
     public function __construct(
         public readonly string $action,
         public readonly array $data,
-        public readonly string $lang = 'en',
+        public readonly ?string $lang = null,
         public readonly ?string $callbackEvent = null,
     ) {
         $this->tries = config('bee.retry.tries', 3);

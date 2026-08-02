@@ -64,4 +64,42 @@ class ErrorHandlingTest extends TestCase
 
         $this->assertTrue($result['success']);
     }
+
+    /**
+     * Regression guard: extractApiCode() must never be consulted to decide
+     * IF a response failed — only success itself decides that. status_code
+     * is already overloaded elsewhere in this package (transport errors,
+     * ApiResponse::toArray()), so its mere presence alongside success:true
+     * must not be misread as an error code.
+     */
+    public function test_success_true_with_a_status_code_present_is_not_treated_as_failure(): void
+    {
+        Http::fake(['*' => Http::response([
+            'success' => true,
+            'status_code' => 200,
+            'data' => ['account_list' => []],
+        ], 200)]);
+
+        $result = app(ApiClient::class)->getAccountInfo();
+
+        $this->assertTrue($result['success']);
+    }
+
+    public function test_a_200_response_with_an_empty_body_is_treated_as_failure(): void
+    {
+        Http::fake(['*' => Http::response('', 200)]);
+
+        $this->expectException(BeeServerException::class);
+
+        app(ApiClient::class)->getAccountInfo();
+    }
+
+    public function test_a_200_response_with_a_non_json_body_is_treated_as_failure(): void
+    {
+        Http::fake(['*' => Http::response('<html>upstream WAF page</html>', 200)]);
+
+        $this->expectException(BeeServerException::class);
+
+        app(ApiClient::class)->getAccountInfo();
+    }
 }
