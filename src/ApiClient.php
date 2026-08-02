@@ -4,6 +4,7 @@ namespace Ghanem\Bee;
 
 use Ghanem\Bee\DTOs\ApiResponse;
 use Ghanem\Bee\Enums\ErrorCode;
+use Ghanem\Bee\Enums\OperationStatus;
 use Ghanem\Bee\Exceptions\BeeException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -162,7 +163,8 @@ class ApiClient
                 'action' => 'GetServiceList',
                 'version' => 2,
                 'language' => $lang,
-                'data' => ['s' => 'd'],
+                // PDF 5.2 / p.24: "data": {} for all services (no provider_id).
+                'data' => (object) [],
             ]);
         });
     }
@@ -175,7 +177,8 @@ class ApiClient
                 'action' => 'GetServiceInputParameterList',
                 'version' => 2,
                 'language' => $lang,
-                'data' => ['s' => 'd'],
+                // PDF 5.5 / p.24: "data": {} for all services (no service_id).
+                'data' => (object) [],
             ]);
         });
     }
@@ -188,7 +191,8 @@ class ApiClient
                 'action' => 'GetServiceOutputParameterList',
                 'version' => 2,
                 'language' => $lang,
-                'data' => ['s' => 'd'],
+                // PDF 5.6 / p.24: "data": {} for all services (no service_id).
+                'data' => (object) [],
             ]);
         });
     }
@@ -201,7 +205,8 @@ class ApiClient
                 'action' => 'GetCategoryList',
                 'version' => 2,
                 'language' => $lang,
-                'data' => ['s' => 1],
+                // PDF 5.3 / p.23: no request parameters at all — "data": {}.
+                'data' => (object) [],
             ]);
         });
     }
@@ -214,7 +219,8 @@ class ApiClient
                 'action' => 'GetCategoryServiceList',
                 'version' => 2,
                 'language' => $lang,
-                'data' => ['s' => 1],
+                // PDF 5.4 / p.24: no request parameters at all — "data": {}.
+                'data' => (object) [],
             ]);
         });
     }
@@ -240,7 +246,8 @@ class ApiClient
             'action' => 'GetAccountInfo',
             'version' => 2,
             'language' => $lang,
-            'data' => ['s' => 'd'],
+            // PDF 5.10 / p.25: no request parameters at all — "data": {}.
+            'data' => (object) [],
         ]);
     }
 
@@ -273,11 +280,34 @@ class ApiClient
                 'service_id' => $data['service_id'] ?? 14,
                 'external_id' => $data['external_id'] ?? '14',
                 'amount' => $data['amount'] ?? 1.5,
-                'service_charge' => $data['service_charge'] ?? 0,
+                // PDF 5.8 (p.14): service_charge is NOT a request field — only
+                // external_id, service_version, account_number, service_id,
+                // inquiry_transaction_id, amount, total_amount, quantity and
+                // input_parameter_list are. total_amount already carries the
+                // charge; sending an undocumented service_charge key was a
+                // contract mismatch.
                 'total_amount' => $data['total_amount'] ?? 1.5,
                 'quantity' => $data['quantity'] ?? 1,
                 'inquiry_transaction_id' => $data['inquiry_transaction_id'] ?? 2,
                 'input_parameter_list' => $data['input_parameter_list'] ?? [],
+            ],
+        ]);
+    }
+
+    public function confirmPrepaidCardRecharge(
+        string $paymentTransactionId,
+        OperationStatus $status,
+        ?string $lang = null,
+        ?string $terminalId = null,
+    ): Collection|array {
+        return $this->request('service', [
+            'terminal_id' => $terminalId,
+            'action' => 'ConfirmPrepaidCardRecharge',
+            'version' => 2,
+            'language' => $lang,
+            'data' => [
+                'payment_transaction_id' => $paymentTransactionId,
+                'operation_status' => $status->value,
             ],
         ]);
     }

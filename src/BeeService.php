@@ -5,6 +5,7 @@ namespace Ghanem\Bee;
 use Ghanem\Bee\DTOs\ApiResponse;
 use Ghanem\Bee\DTOs\ServiceChargeResult;
 use Ghanem\Bee\DTOs\TransactionResult;
+use Ghanem\Bee\Enums\OperationStatus;
 use Ghanem\Bee\Jobs\BatchTransactionJob;
 use Ghanem\Bee\Jobs\ProcessTransactionPaymentJob;
 use Illuminate\Bus\Batch;
@@ -59,6 +60,11 @@ class BeeService
     public function getAccountInfo(?string $lang = null): Collection|array
     {
         return $this->client->getAccountInfo($lang);
+    }
+
+    public function confirmPrepaidCardRecharge(string $paymentTransactionId, OperationStatus $status, ?string $lang = null): Collection|array
+    {
+        return $this->client->confirmPrepaidCardRecharge($paymentTransactionId, $status, $lang);
     }
 
     public function transactionInquiry(array $data, ?string $lang = null): Collection|array

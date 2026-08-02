@@ -288,8 +288,10 @@ class ApiClientTest extends TestCase
         Http::assertSent(function ($r) {
             $data = $r->data()['data'];
 
+            // PDF 5.8 (p.14): service_charge is not a TransactionPayment
+            // request field, so it must never be sent on the wire.
             return $data['amount'] === 1.5
-                && $data['service_charge'] === 0
+                && ! array_key_exists('service_charge', $data)
                 && $data['total_amount'] === 1.5
                 && $data['quantity'] === 1;
         });
