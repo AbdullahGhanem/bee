@@ -1,11 +1,11 @@
 <?php
 
-namespace Ghanem\Bee;
+namespace Ghanem\Basata;
 
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\Enums\ErrorCode;
-use Ghanem\Bee\Enums\OperationStatus;
-use Ghanem\Bee\Exceptions\BeeException;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\Enums\ErrorCode;
+use Ghanem\Basata\Enums\OperationStatus;
+use Ghanem\Basata\Exceptions\BasataException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -32,13 +32,13 @@ class ApiClient
 
         $params['terminal_id'] = $this->resolveTerminalId($params['terminal_id'] ?? null);
         $params['language'] = $this->resolveLanguage($params['language'] ?? null);
-        $params['login'] = config('bee.username');
-        $params['password'] = config('bee.password');
-        $link = config('bee.url') . $endpoint;
+        $params['login'] = config('basata.username');
+        $params['password'] = config('basata.password');
+        $link = config('basata.url') . $endpoint;
 
         $this->logRequest($endpoint, $params);
 
-        $retryConfig = config('bee.retry', []);
+        $retryConfig = config('basata.retry', []);
         $tries = $retryConfig['tries'] ?? 3;
         $delay = $retryConfig['delay'] ?? 100;
         $multiplier = $retryConfig['multiplier'] ?? 2;
@@ -104,25 +104,25 @@ class ApiClient
      */
     protected function handleFailure(?int $code, array $payload): array
     {
-        if (config('bee.errors.throw', true)) {
-            throw BeeException::fromCode($code, $payload);
+        if (config('basata.errors.throw', true)) {
+            throw BasataException::fromCode($code, $payload);
         }
 
         return $payload;
     }
 
     /**
-     * Public so other classes composing an ApiClient (e.g. BeeService's DTO
+     * Public so other classes composing an ApiClient (e.g. BasataService's DTO
      * methods) can reuse the same config resolution + validation instead of
      * duplicating it.
      */
     public function resolveTerminalId(?string $terminalId = null): string
     {
-        $terminalId ??= config('bee.terminal_id');
+        $terminalId ??= config('basata.terminal_id');
 
         // Not empty(): "0" is a legitimate terminal ID, not a falsy absence.
         if ($terminalId === null || $terminalId === '') {
-            throw BeeException::fromCode(ErrorCode::TerminalIdRequired->value);
+            throw BasataException::fromCode(ErrorCode::TerminalIdRequired->value);
         }
 
         return $terminalId;
@@ -130,7 +130,7 @@ class ApiClient
 
     public function resolveLanguage(?string $lang = null): string
     {
-        return $lang ?? config('bee.language', 'en');
+        return $lang ?? config('basata.language', 'en');
     }
 
     /**
@@ -148,7 +148,7 @@ class ApiClient
         $value = $data[$key] ?? null;
 
         if ($value === null || $value === '') {
-            throw BeeException::fromCode($code->value);
+            throw BasataException::fromCode($code->value);
         }
 
         return $value;
@@ -308,7 +308,7 @@ class ApiClient
                 'service_id' => $this->requireField($data, 'service_id', ErrorCode::DataRequired),
                 'external_id' => $this->requireField($data, 'external_id', ErrorCode::DataRequired),
                 'amount' => $this->requireField($data, 'amount', ErrorCode::WrongAmount),
-                // PDF FAQ A6 (p.19): "the client sends the request to Bee
+                // PDF FAQ A6 (p.19): "the client sends the request to Basata
                 // including the amount, the calculated service charge, and
                 // the total amount of the transaction" — an affirmative
                 // statement that service_charge is a real request field, and
@@ -397,8 +397,8 @@ class ApiClient
 
     public function clearCache(?string $key = null): void
     {
-        $store = Cache::store(config('bee.cache.store'));
-        $prefix = config('bee.cache.prefix', 'bee_');
+        $store = Cache::store(config('basata.cache.store'));
+        $prefix = config('basata.cache.prefix', 'basata_');
 
         if ($key) {
             $store->forget($prefix . $key);
@@ -428,12 +428,12 @@ class ApiClient
 
     protected function cached(string $key, callable $callback): Collection|array
     {
-        if (! config('bee.cache.enabled', true)) {
+        if (! config('basata.cache.enabled', true)) {
             return $callback();
         }
 
-        $store = Cache::store(config('bee.cache.store'));
-        $fullKey = config('bee.cache.prefix', 'bee_') . $key;
+        $store = Cache::store(config('basata.cache.store'));
+        $fullKey = config('basata.cache.prefix', 'basata_') . $key;
 
         if ($store->has($fullKey)) {
             return $store->get($fullKey);
@@ -442,11 +442,11 @@ class ApiClient
         $result = $callback();
 
         // Only a Collection means request() actually succeeded — a business
-        // failure (bee.errors.throw = false) or a transport error both come
+        // failure (basata.errors.throw = false) or a transport error both come
         // back as a plain array and must never be cached: a transient error
         // would otherwise poison every read for the full TTL.
         if ($result instanceof Collection) {
-            $store->put($fullKey, $result, config('bee.cache.ttl', 3600));
+            $store->put($fullKey, $result, config('basata.cache.ttl', 3600));
         }
 
         return $result;
@@ -454,15 +454,15 @@ class ApiClient
 
     protected function logRequest(string $endpoint, array $params): void
     {
-        if (! config('bee.logging.enabled', false)) {
+        if (! config('basata.logging.enabled', false)) {
             return;
         }
 
         $safeParams = $params;
         unset($safeParams['login'], $safeParams['password']);
 
-        Log::channel(config('bee.logging.channel'))
-            ->info('Bee API Request', [
+        Log::channel(config('basata.logging.channel'))
+            ->info('Basata API Request', [
                 'endpoint' => $endpoint,
                 'params' => $safeParams,
             ]);
@@ -470,14 +470,14 @@ class ApiClient
 
     protected function logResponse(string $endpoint, array $data, int $statusCode, bool $isError = false): void
     {
-        if (! config('bee.logging.enabled', false)) {
+        if (! config('basata.logging.enabled', false)) {
             return;
         }
 
         $method = $isError ? 'error' : 'info';
 
-        Log::channel(config('bee.logging.channel'))
-            ->$method('Bee API Response', [
+        Log::channel(config('basata.logging.channel'))
+            ->$method('Basata API Response', [
                 'endpoint' => $endpoint,
                 'status_code' => $statusCode,
                 'response' => $data,
@@ -486,19 +486,19 @@ class ApiClient
 
     protected function isRateLimited(): bool
     {
-        if (! config('bee.rate_limit.enabled', false)) {
+        if (! config('basata.rate_limit.enabled', false)) {
             return false;
         }
 
-        return RateLimiter::tooManyAttempts('bee-api', config('bee.rate_limit.max_attempts', 60));
+        return RateLimiter::tooManyAttempts('basata-api', config('basata.rate_limit.max_attempts', 60));
     }
 
     protected function hitRateLimiter(): void
     {
-        if (! config('bee.rate_limit.enabled', false)) {
+        if (! config('basata.rate_limit.enabled', false)) {
             return;
         }
 
-        RateLimiter::hit('bee-api', 60);
+        RateLimiter::hit('basata-api', 60);
     }
 }

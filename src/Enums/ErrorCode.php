@@ -1,14 +1,14 @@
 <?php
 
-namespace Ghanem\Bee\Enums;
+namespace Ghanem\Basata\Enums;
 
-use Ghanem\Bee\Exceptions\BeeAuthenticationException;
-use Ghanem\Bee\Exceptions\BeeInsufficientBalanceException;
-use Ghanem\Bee\Exceptions\BeeNotFoundException;
-use Ghanem\Bee\Exceptions\BeeRateLimitException;
-use Ghanem\Bee\Exceptions\BeeServerException;
-use Ghanem\Bee\Exceptions\BeeTransactionInProgressException;
-use Ghanem\Bee\Exceptions\BeeValidationException;
+use Ghanem\Basata\Exceptions\BasataAuthenticationException;
+use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataNotFoundException;
+use Ghanem\Basata\Exceptions\BasataRateLimitException;
+use Ghanem\Basata\Exceptions\BasataServerException;
+use Ghanem\Basata\Exceptions\BasataTransactionInProgressException;
+use Ghanem\Basata\Exceptions\BasataValidationException;
 
 /**
  * Every documented API error code, transcribed verbatim from the Channel API
@@ -116,7 +116,7 @@ enum ErrorCode: int
      * not explicitly place 1019, 1023, 1025, 1028 and 1029 into a group;
      * they are client-side/business-rule validation failures (unsupported
      * feature, duplicate submission, stale version, card already used or
-     * expired), so they are grouped under BeeValidationException here.
+     * expired), so they are grouped under BasataValidationException here.
      */
     public function exceptionClass(): string
     {
@@ -126,7 +126,7 @@ enum ErrorCode: int
             self::IncorrectCredentials,
             self::InvalidUser,
             self::ChangePasswordRequired,
-            self::PermissionDenied => BeeAuthenticationException::class,
+            self::PermissionDenied => BasataAuthenticationException::class,
 
             self::ActionRequired,
             self::IncorrectActionName,
@@ -148,23 +148,23 @@ enum ErrorCode: int
             self::InvalidHttpCharset,
             self::InvalidHttpContent,
             self::UnsupportedHttpMethod,
-            self::InvalidUrlPath => BeeValidationException::class,
+            self::InvalidUrlPath => BasataValidationException::class,
 
-            self::InsufficientBalance => BeeInsufficientBalanceException::class,
+            self::InsufficientBalance => BasataInsufficientBalanceException::class,
 
-            self::RateLimitExceeded => BeeRateLimitException::class,
+            self::RateLimitExceeded => BasataRateLimitException::class,
 
-            self::TransactionInProgress => BeeTransactionInProgressException::class,
+            self::TransactionInProgress => BasataTransactionInProgressException::class,
 
             self::AccountNumberNotFound,
             self::ReceiverAccountNotFound,
             self::UnknownService,
             self::InquiryTransactionNotFound,
             self::TransactionNotFound,
-            self::BeecardNotFound => BeeNotFoundException::class,
+            self::BeecardNotFound => BasataNotFoundException::class,
 
             self::InternalServerError,
-            self::AmbiguousServerError => BeeServerException::class,
+            self::AmbiguousServerError => BasataServerException::class,
         };
     }
 }

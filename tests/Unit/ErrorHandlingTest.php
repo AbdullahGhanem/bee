@@ -1,12 +1,12 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Exceptions\BeeInsufficientBalanceException;
-use Ghanem\Bee\Exceptions\BeeServerException;
-use Ghanem\Bee\Exceptions\BeeTransactionInProgressException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataServerException;
+use Ghanem\Basata\Exceptions\BasataTransactionInProgressException;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
 class ErrorHandlingTest extends TestCase
@@ -19,7 +19,7 @@ class ErrorHandlingTest extends TestCase
             'message' => 'Insufficient balance',
         ], 200)]);
 
-        $this->expectException(BeeInsufficientBalanceException::class);
+        $this->expectException(BasataInsufficientBalanceException::class);
 
         app(ApiClient::class)->getAccountInfo();
     }
@@ -31,7 +31,7 @@ class ErrorHandlingTest extends TestCase
         try {
             app(ApiClient::class)->getAccountInfo();
             $this->fail('Expected exception');
-        } catch (BeeTransactionInProgressException $e) {
+        } catch (BasataTransactionInProgressException $e) {
             $this->assertSame(1034, $e->apiCode);
             $this->assertArrayHasKey('code', $e->payload);
         }
@@ -41,14 +41,14 @@ class ErrorHandlingTest extends TestCase
     {
         Http::fake(['*' => Http::response(['success' => false, 'code' => 9999], 200)]);
 
-        $this->expectException(BeeServerException::class);
+        $this->expectException(BasataServerException::class);
 
         app(ApiClient::class)->getAccountInfo();
     }
 
     public function test_throwing_can_be_disabled(): void
     {
-        config()->set('bee.errors.throw', false);
+        config()->set('basata.errors.throw', false);
         Http::fake(['*' => Http::response(['success' => false, 'code' => 1016], 200)]);
 
         $result = app(ApiClient::class)->getAccountInfo();
@@ -89,7 +89,7 @@ class ErrorHandlingTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 200)]);
 
-        $this->expectException(BeeServerException::class);
+        $this->expectException(BasataServerException::class);
 
         app(ApiClient::class)->getAccountInfo();
     }
@@ -98,7 +98,7 @@ class ErrorHandlingTest extends TestCase
     {
         Http::fake(['*' => Http::response('<html>upstream WAF page</html>', 200)]);
 
-        $this->expectException(BeeServerException::class);
+        $this->expectException(BasataServerException::class);
 
         app(ApiClient::class)->getAccountInfo();
     }

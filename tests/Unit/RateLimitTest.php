@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Exceptions\BeeRateLimitException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Exceptions\BasataRateLimitException;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -13,15 +13,15 @@ class RateLimitTest extends TestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('bee.rate_limit.enabled', true);
-        $app['config']->set('bee.rate_limit.max_attempts', 3);
-        $app['config']->set('bee.cache.enabled', false);
+        $app['config']->set('basata.rate_limit.enabled', true);
+        $app['config']->set('basata.rate_limit.max_attempts', 3);
+        $app['config']->set('basata.cache.enabled', false);
     }
 
     public function test_allows_requests_within_limit(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         $client = new ApiClient();
@@ -36,10 +36,10 @@ class RateLimitTest extends TestCase
     public function test_blocks_requests_over_limit(): void
     {
         // Regression guard: rate limiting is a business failure like any
-        // other API error code, so by default (bee.errors.throw = true) it
+        // other API error code, so by default (basata.errors.throw = true) it
         // must throw rather than hand back a "success-shaped" array.
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         $client = new ApiClient();
@@ -52,18 +52,18 @@ class RateLimitTest extends TestCase
         // Next request should be rate limited
         try {
             $client->request('service', ['action' => 'Test']);
-            $this->fail('Expected BeeRateLimitException');
-        } catch (BeeRateLimitException $e) {
+            $this->fail('Expected BasataRateLimitException');
+        } catch (BasataRateLimitException $e) {
             $this->assertSame(1033, $e->apiCode);
         }
     }
 
     public function test_blocks_requests_over_limit_without_throwing_when_disabled(): void
     {
-        $this->app['config']->set('bee.errors.throw', false);
+        $this->app['config']->set('basata.errors.throw', false);
 
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         $client = new ApiClient();
@@ -81,10 +81,10 @@ class RateLimitTest extends TestCase
 
     public function test_rate_limit_does_not_apply_when_disabled(): void
     {
-        $this->app['config']->set('bee.rate_limit.enabled', false);
+        $this->app['config']->set('basata.rate_limit.enabled', false);
 
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         $client = new ApiClient();
@@ -97,7 +97,7 @@ class RateLimitTest extends TestCase
 
     protected function tearDown(): void
     {
-        RateLimiter::clear('bee-api');
+        RateLimiter::clear('basata-api');
         parent::tearDown();
     }
 }

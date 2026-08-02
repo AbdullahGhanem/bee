@@ -1,9 +1,9 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,28 +12,28 @@ class LoggingTest extends TestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('bee.logging.enabled', true);
-        $app['config']->set('bee.cache.enabled', false);
+        $app['config']->set('basata.logging.enabled', true);
+        $app['config']->set('basata.cache.enabled', false);
     }
 
     public function test_logs_request_when_enabled(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         Log::shouldReceive('channel')->andReturnSelf();
         Log::shouldReceive('info')
             ->once()
             ->withArgs(function ($message, $context) {
-                return $message === 'Bee API Request'
+                return $message === 'Basata API Request'
                     && $context['endpoint'] === 'service'
                     && ! isset($context['params']['login'])
                     && ! isset($context['params']['password']);
             });
         Log::shouldReceive('info')
             ->once()
-            ->withArgs(fn ($message) => $message === 'Bee API Response');
+            ->withArgs(fn ($message) => $message === 'Basata API Response');
 
         $client = new ApiClient();
         $client->request('service', ['action' => 'Test']);
@@ -42,7 +42,7 @@ class LoggingTest extends TestCase
     public function test_logs_error_response(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['error' => 'Bad Request'], 400),
+            'https://api.basata.test/service' => Http::response(['error' => 'Bad Request'], 400),
         ]);
 
         Log::shouldReceive('channel')->andReturnSelf();
@@ -50,7 +50,7 @@ class LoggingTest extends TestCase
         Log::shouldReceive('error')
             ->once()
             ->withArgs(function ($message, $context) {
-                return $message === 'Bee API Response'
+                return $message === 'Basata API Response'
                     && $context['status_code'] === 400;
             });
 
@@ -61,14 +61,14 @@ class LoggingTest extends TestCase
     public function test_does_not_log_credentials(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         Log::shouldReceive('channel')->andReturnSelf();
         Log::shouldReceive('info')
             ->once()
             ->withArgs(function ($message, $context) {
-                if ($message !== 'Bee API Request') {
+                if ($message !== 'Basata API Request') {
                     return true;
                 }
 
@@ -83,10 +83,10 @@ class LoggingTest extends TestCase
 
     public function test_does_not_log_when_disabled(): void
     {
-        $this->app['config']->set('bee.logging.enabled', false);
+        $this->app['config']->set('basata.logging.enabled', false);
 
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         Log::shouldReceive('channel')->never();

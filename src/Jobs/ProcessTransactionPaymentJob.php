@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Jobs;
+namespace Ghanem\Basata\Jobs;
 
-use Ghanem\Bee\BeeService;
-use Ghanem\Bee\DTOs\TransactionResult;
-use Ghanem\Bee\Events\TransactionStatusUpdated;
+use Ghanem\Basata\BasataService;
+use Ghanem\Basata\DTOs\TransactionResult;
+use Ghanem\Basata\Events\TransactionStatusUpdated;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,15 +22,15 @@ class ProcessTransactionPaymentJob implements ShouldQueue
         public readonly array $data,
         public readonly ?string $lang = null,
     ) {
-        $this->tries = config('bee.retry.tries', 3);
-        $this->backoff = config('bee.retry.delay', 100);
-        $this->onQueue(config('bee.queue.queue', 'default'));
-        $this->onConnection(config('bee.queue.connection', config('queue.default')));
+        $this->tries = config('basata.retry.tries', 3);
+        $this->backoff = config('basata.retry.delay', 100);
+        $this->onQueue(config('basata.queue.queue', 'default'));
+        $this->onConnection(config('basata.queue.connection', config('queue.default')));
     }
 
-    public function handle(BeeService $bee): void
+    public function handle(BasataService $basata): void
     {
-        $response = $bee->transactionPayment($this->data, $this->lang);
+        $response = $basata->transactionPayment($this->data, $this->lang);
 
         if ($response instanceof \Illuminate\Support\Collection) {
             TransactionStatusUpdated::dispatch(

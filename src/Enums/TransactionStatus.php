@@ -1,6 +1,6 @@
 <?php
 
-namespace Ghanem\Bee\Enums;
+namespace Ghanem\Basata\Enums;
 
 enum TransactionStatus: string
 {

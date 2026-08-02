@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Exceptions;
+namespace Ghanem\Basata\Exceptions;
 
-use Ghanem\Bee\Enums\ErrorCode;
+use Ghanem\Basata\Enums\ErrorCode;
 
-class BeeException extends \RuntimeException
+class BasataException extends \RuntimeException
 {
     public function __construct(
         public readonly ?int $apiCode,
@@ -17,7 +17,7 @@ class BeeException extends \RuntimeException
     public static function fromCode(?int $code, array $payload = []): static
     {
         $enum = $code === null ? null : ErrorCode::tryFromCode($code);
-        $class = $enum?->exceptionClass() ?? BeeServerException::class;
+        $class = $enum?->exceptionClass() ?? BasataServerException::class;
 
         return new $class($code, $enum?->message() ?? 'Unknown API error', $payload);
     }

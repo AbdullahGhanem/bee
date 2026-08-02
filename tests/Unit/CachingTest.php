@@ -1,9 +1,9 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\Facades\Bee;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\Facades\Basata;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -12,19 +12,19 @@ class CachingTest extends TestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('bee.cache.enabled', true);
-        $app['config']->set('bee.cache.ttl', 3600);
-        $app['config']->set('bee.cache.prefix', 'bee_');
+        $app['config']->set('basata.cache.enabled', true);
+        $app['config']->set('basata.cache.ttl', 3600);
+        $app['config']->set('basata.cache.prefix', 'basata_');
     }
 
     public function test_category_list_is_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => ['categories' => []]], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => ['categories' => []]], 200),
         ]);
 
-        Bee::getCategoryList();
-        Bee::getCategoryList();
+        Basata::getCategoryList();
+        Basata::getCategoryList();
 
         Http::assertSentCount(1);
     }
@@ -32,11 +32,11 @@ class CachingTest extends TestCase
     public function test_service_list_is_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getServiceList();
-        Bee::getServiceList();
+        Basata::getServiceList();
+        Basata::getServiceList();
 
         Http::assertSentCount(1);
     }
@@ -44,11 +44,11 @@ class CachingTest extends TestCase
     public function test_category_service_list_is_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getCategoryServiceList();
-        Bee::getCategoryServiceList();
+        Basata::getCategoryServiceList();
+        Basata::getCategoryServiceList();
 
         Http::assertSentCount(1);
     }
@@ -56,11 +56,11 @@ class CachingTest extends TestCase
     public function test_service_input_parameter_list_is_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getServiceInputParameterList();
-        Bee::getServiceInputParameterList();
+        Basata::getServiceInputParameterList();
+        Basata::getServiceInputParameterList();
 
         Http::assertSentCount(1);
     }
@@ -68,11 +68,11 @@ class CachingTest extends TestCase
     public function test_service_output_parameter_list_is_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getServiceOutputParameterList();
-        Bee::getServiceOutputParameterList();
+        Basata::getServiceOutputParameterList();
+        Basata::getServiceOutputParameterList();
 
         Http::assertSentCount(1);
     }
@@ -80,25 +80,25 @@ class CachingTest extends TestCase
     public function test_different_languages_cached_separately(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getCategoryList('en');
-        Bee::getCategoryList('ar');
+        Basata::getCategoryList('en');
+        Basata::getCategoryList('ar');
 
         Http::assertSentCount(2);
     }
 
     public function test_cache_can_be_disabled(): void
     {
-        $this->app['config']->set('bee.cache.enabled', false);
+        $this->app['config']->set('basata.cache.enabled', false);
 
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getCategoryList();
-        Bee::getCategoryList();
+        Basata::getCategoryList();
+        Basata::getCategoryList();
 
         Http::assertSentCount(2);
     }
@@ -106,12 +106,12 @@ class CachingTest extends TestCase
     public function test_clear_cache_removes_all_cached_data(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getCategoryList();
-        Bee::clearCache();
-        Bee::getCategoryList();
+        Basata::getCategoryList();
+        Basata::clearCache();
+        Basata::getCategoryList();
 
         Http::assertSentCount(2);
     }
@@ -119,16 +119,16 @@ class CachingTest extends TestCase
     public function test_clear_cache_with_specific_key(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getCategoryList();
-        Bee::getServiceList();
+        Basata::getCategoryList();
+        Basata::getServiceList();
 
-        Bee::clearCache('category_list_en');
+        Basata::clearCache('category_list_en');
 
-        Bee::getCategoryList(); // should make new request
-        Bee::getServiceList(); // should still be cached
+        Basata::getCategoryList(); // should make new request
+        Basata::getServiceList(); // should still be cached
 
         Http::assertSentCount(3);
     }
@@ -139,14 +139,14 @@ class CachingTest extends TestCase
         // plain array for a business failure. cached() must not store it —
         // otherwise a transient error (e.g. rate limit, 1034) would poison
         // every read of that list for the full TTL.
-        $this->app['config']->set('bee.errors.throw', false);
+        $this->app['config']->set('basata.errors.throw', false);
 
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => false, 'code' => 2000], 200),
+            'https://api.basata.test/service' => Http::response(['success' => false, 'code' => 2000], 200),
         ]);
 
-        Bee::getCategoryList();
-        Bee::getCategoryList();
+        Basata::getCategoryList();
+        Basata::getCategoryList();
 
         Http::assertSentCount(2);
     }
@@ -154,11 +154,11 @@ class CachingTest extends TestCase
     public function test_transactions_are_not_cached(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/report' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        Bee::getTransaction(1);
-        Bee::getTransaction(1);
+        Basata::getTransaction(1);
+        Basata::getTransaction(1);
 
         Http::assertSentCount(2);
     }

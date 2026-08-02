@@ -1,9 +1,9 @@
 {
-    "name": "ghanem/bee",
+    "name": "ghanem/basata",
     "type": "library",
-    "description": "A Laravel package that provides an interface to the Bee payment services API.",
-    "keywords": ["Laravel", "PHP", "Bee", "API", "Payment"],
-    "homepage": "https://github.com/abdullahghanem/bee",
+    "description": "A Laravel package that provides an interface to the Basata payment services API.",
+    "keywords": ["Laravel", "PHP", "Basata", "API", "Payment"],
+    "homepage": "https://github.com/abdullahghanem/basata",
     "license": "MIT",
     "authors": [
         {
@@ -23,26 +23,24 @@
     },
     "autoload": {
         "psr-4": {
-            "Ghanem\\Bee\\": "src/"
+            "Ghanem\\Basata\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Ghanem\\Bee\\Tests\\": "tests/"
+            "Ghanem\\Basata\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Ghanem\\Bee\\BeeServiceProvider"
+                "Ghanem\\Basata\\BasataServiceProvider"
             ],
             "aliases": {
-                "Bee": "Ghanem\\Bee\\Facades\\Bee"
+                "Basata": "Ghanem\\Basata\\Facades\\Basata"
             }
         }
     },
-    "minimum-stability": "dev",
-    "prefer-stable": true,
     "config": {
         "sort-packages": true
     },

@@ -1,18 +1,18 @@
 <?php
 
-namespace Ghanem\Bee;
+namespace Ghanem\Basata;
 
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\DTOs\ServiceChargeResult;
-use Ghanem\Bee\DTOs\TransactionResult;
-use Ghanem\Bee\Enums\OperationStatus;
-use Ghanem\Bee\Jobs\BatchTransactionJob;
-use Ghanem\Bee\Jobs\ProcessTransactionPaymentJob;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\DTOs\ServiceChargeResult;
+use Ghanem\Basata\DTOs\TransactionResult;
+use Ghanem\Basata\Enums\OperationStatus;
+use Ghanem\Basata\Jobs\BatchTransactionJob;
+use Ghanem\Basata\Jobs\ProcessTransactionPaymentJob;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 
-class BeeService
+class BasataService
 {
     public function __construct(
         protected ApiClient $client = new ApiClient()
@@ -169,9 +169,9 @@ class BeeService
         }, $transactions);
 
         $batch = Bus::batch($jobs)
-            ->onQueue(config('bee.queue.queue', 'default'));
+            ->onQueue(config('basata.queue.queue', 'default'));
 
-        $connection = config('bee.queue.connection') ?? config('queue.default');
+        $connection = config('basata.queue.connection') ?? config('queue.default');
         if ($connection) {
             $batch->onConnection($connection);
         }

@@ -1,25 +1,25 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\BeeService;
-use Ghanem\Bee\Facades\Bee;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\BasataService;
+use Ghanem\Basata\Facades\Basata;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
-class BeeServiceTest extends TestCase
+class BasataServiceTest extends TestCase
 {
     public function test_get_category_list_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['categories' => []],
             ], 200),
         ]);
 
-        $result = Bee::getCategoryList();
+        $result = Basata::getCategoryList();
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -27,10 +27,10 @@ class BeeServiceTest extends TestCase
     public function test_get_category_service_list_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        $result = Bee::getCategoryServiceList();
+        $result = Basata::getCategoryServiceList();
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -38,13 +38,13 @@ class BeeServiceTest extends TestCase
     public function test_get_provider_list_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 1],
             ], 200),
         ]);
 
-        $result = Bee::getProviderList(3, 'ar');
+        $result = Basata::getProviderList(3, 'ar');
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -52,10 +52,10 @@ class BeeServiceTest extends TestCase
     public function test_get_service_list_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
-        $result = Bee::getServiceList();
+        $result = Basata::getServiceList();
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -63,13 +63,13 @@ class BeeServiceTest extends TestCase
     public function test_get_transaction_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 1],
             ], 200),
         ]);
 
-        $result = Bee::getTransaction(1);
+        $result = Basata::getTransaction(1);
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -77,13 +77,13 @@ class BeeServiceTest extends TestCase
     public function test_get_account_info_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['balance' => 500],
             ], 200),
         ]);
 
-        $result = Bee::getAccountInfo();
+        $result = Basata::getAccountInfo();
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -91,17 +91,17 @@ class BeeServiceTest extends TestCase
     public function test_transaction_inquiry_fetches_service_version(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 5],
             ], 200),
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 100],
             ], 200),
         ]);
 
-        $result = Bee::transactionInquiry([
+        $result = Basata::transactionInquiry([
             'account_number' => '123',
             'service_id' => 10,
         ]);
@@ -115,17 +115,17 @@ class BeeServiceTest extends TestCase
     public function test_transaction_payment_fetches_service_version(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 5],
             ], 200),
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 200],
             ], 200),
         ]);
 
-        $result = Bee::transactionPayment([
+        $result = Basata::transactionPayment([
             'account_number' => '123',
             'service_id' => 10,
             'external_id' => 'ext-1',
@@ -141,7 +141,7 @@ class BeeServiceTest extends TestCase
     public function test_calculate_service_charge_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -156,7 +156,7 @@ class BeeServiceTest extends TestCase
             ], 200),
         ]);
 
-        $result = Bee::calculateServiceCharge([
+        $result = Basata::calculateServiceCharge([
             'service_id' => 10,
             'amount' => 100,
         ]);
@@ -169,7 +169,7 @@ class BeeServiceTest extends TestCase
     public function test_calculate_service_charge_reverse_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -184,7 +184,7 @@ class BeeServiceTest extends TestCase
             ], 200),
         ]);
 
-        $result = Bee::calculateServiceChargeReverse([
+        $result = Basata::calculateServiceChargeReverse([
             'service_id' => 10,
             'amount' => 110,
         ]);
@@ -196,13 +196,13 @@ class BeeServiceTest extends TestCase
     public function test_get_bills_amount_via_facade(): void
     {
         Http::fake([
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 50, 'amount' => 300],
             ], 200),
         ]);
 
-        $result = Bee::getBillsAmount([
+        $result = Basata::getBillsAmount([
             'service_version' => 3,
             'service_id' => 10,
             'account_number' => '123',
@@ -213,10 +213,10 @@ class BeeServiceTest extends TestCase
         $this->assertEquals(300, $result['amount']);
     }
 
-    public function test_bee_service_can_be_resolved_from_container(): void
+    public function test_basata_service_can_be_resolved_from_container(): void
     {
-        $service = app(BeeService::class);
+        $service = app(BasataService::class);
 
-        $this->assertInstanceOf(BeeService::class, $service);
+        $this->assertInstanceOf(BasataService::class, $service);
     }
 }

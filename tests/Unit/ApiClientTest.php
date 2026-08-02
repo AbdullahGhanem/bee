@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Exceptions\BeeValidationException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Exceptions\BasataValidationException;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -21,7 +21,7 @@ class ApiClientTest extends TestCase
     public function test_request_returns_collection_on_success(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $result = $this->client->request('service', ['action' => 'Test']);
@@ -33,7 +33,7 @@ class ApiClientTest extends TestCase
     public function test_request_returns_error_array_on_failure(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['error' => 'Unauthorized'], 401),
+            'https://api.basata.test/service' => Http::response(['error' => 'Unauthorized'], 401),
         ]);
 
         $result = $this->client->request('service', ['action' => 'Test']);
@@ -46,7 +46,7 @@ class ApiClientTest extends TestCase
     public function test_request_includes_credentials(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true], 200),
         ]);
 
         $this->client->request('service', ['action' => 'Test']);
@@ -63,7 +63,7 @@ class ApiClientTest extends TestCase
     public function test_get_category_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['categories' => [['id' => 1, 'name' => 'Telecom']]],
             ], 200),
@@ -78,7 +78,7 @@ class ApiClientTest extends TestCase
     public function test_get_category_list_with_language(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $this->client->getCategoryList('ar');
@@ -89,7 +89,7 @@ class ApiClientTest extends TestCase
     public function test_get_category_service_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $result = $this->client->getCategoryServiceList();
@@ -101,7 +101,7 @@ class ApiClientTest extends TestCase
     public function test_get_provider_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 3, 'providers' => []],
             ], 200),
@@ -116,7 +116,7 @@ class ApiClientTest extends TestCase
     public function test_get_service_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_list' => [['id' => 1, 'name' => 'Service 1']]],
             ], 200),
@@ -131,7 +131,7 @@ class ApiClientTest extends TestCase
     public function test_get_service_input_parameter_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $result = $this->client->getServiceInputParameterList();
@@ -143,7 +143,7 @@ class ApiClientTest extends TestCase
     public function test_get_service_output_parameter_list(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $result = $this->client->getServiceOutputParameterList();
@@ -155,7 +155,7 @@ class ApiClientTest extends TestCase
     public function test_get_transaction_by_id(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 123],
             ], 200),
@@ -173,7 +173,7 @@ class ApiClientTest extends TestCase
     public function test_get_transaction_by_external_id(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 123],
             ], 200),
@@ -190,7 +190,7 @@ class ApiClientTest extends TestCase
     public function test_get_account_info(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['balance' => 1000],
             ], 200),
@@ -205,7 +205,7 @@ class ApiClientTest extends TestCase
     public function test_transaction_inquiry(): void
     {
         Http::fake([
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 100, 'amount' => 50],
             ], 200),
@@ -236,7 +236,7 @@ class ApiClientTest extends TestCase
         // RequiredFieldsTest for per-field coverage of the exact codes.
         Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
 
-        $this->expectException(BeeValidationException::class);
+        $this->expectException(BasataValidationException::class);
 
         $this->client->transactionInquiry([]);
     }
@@ -244,7 +244,7 @@ class ApiClientTest extends TestCase
     public function test_transaction_payment(): void
     {
         Http::fake([
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 200],
             ], 200),
@@ -304,7 +304,7 @@ class ApiClientTest extends TestCase
         // per-field coverage of the exact codes.
         Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
 
-        $this->expectException(BeeValidationException::class);
+        $this->expectException(BasataValidationException::class);
 
         $this->client->transactionPayment([]);
     }
@@ -312,7 +312,7 @@ class ApiClientTest extends TestCase
     public function test_calculate_service_charge_with_percentage(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -339,7 +339,7 @@ class ApiClientTest extends TestCase
     public function test_calculate_service_charge_with_flat_rate(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -366,7 +366,7 @@ class ApiClientTest extends TestCase
     public function test_calculate_service_charge_respects_minimum_slap(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -394,7 +394,7 @@ class ApiClientTest extends TestCase
     public function test_calculate_service_charge_reverse(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -422,7 +422,7 @@ class ApiClientTest extends TestCase
     public function test_get_bills_amount(): void
     {
         Http::fake([
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 100, 'amount' => 250],
             ], 200),
@@ -441,18 +441,18 @@ class ApiClientTest extends TestCase
     public function test_request_sends_to_correct_url(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response(['success' => true], 200),
+            'https://api.basata.test/report' => Http::response(['success' => true], 200),
         ]);
 
         $this->client->getAccountInfo();
 
-        Http::assertSent(fn ($r) => $r->url() === 'https://api.bee.test/report');
+        Http::assertSent(fn ($r) => $r->url() === 'https://api.basata.test/report');
     }
 
     public function test_all_service_endpoints_use_service_url(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response(['success' => true, 'data' => []], 200),
+            'https://api.basata.test/service' => Http::response(['success' => true, 'data' => []], 200),
         ]);
 
         $methods = [

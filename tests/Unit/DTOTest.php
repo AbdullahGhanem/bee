@@ -1,11 +1,11 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\DTOs\ServiceChargeResult;
-use Ghanem\Bee\DTOs\TransactionResult;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\DTOs\ServiceChargeResult;
+use Ghanem\Basata\DTOs\TransactionResult;
+use Ghanem\Basata\Tests\TestCase;
 
 class DTOTest extends TestCase
 {

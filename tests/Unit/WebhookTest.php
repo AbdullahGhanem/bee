@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\Events\BeeWebhookReceived;
-use Ghanem\Bee\Events\TransactionStatusUpdated;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\Events\BasataWebhookReceived;
+use Ghanem\Basata\Events\TransactionStatusUpdated;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Event;
 
 class WebhookTest extends TestCase
@@ -12,37 +12,37 @@ class WebhookTest extends TestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('bee.webhook.enabled', true);
-        $app['config']->set('bee.webhook.path', 'bee/webhook');
-        $app['config']->set('bee.webhook.secret', null);
-        $app['config']->set('bee.webhook.middleware', []);
+        $app['config']->set('basata.webhook.enabled', true);
+        $app['config']->set('basata.webhook.path', 'basata/webhook');
+        $app['config']->set('basata.webhook.secret', null);
+        $app['config']->set('basata.webhook.middleware', []);
     }
 
     public function test_webhook_route_is_registered(): void
     {
-        $this->post('bee/webhook', ['event' => 'test'])
+        $this->post('basata/webhook', ['event' => 'test'])
             ->assertStatus(200);
     }
 
     public function test_webhook_dispatches_generic_event(): void
     {
-        Event::fake([BeeWebhookReceived::class]);
+        Event::fake([BasataWebhookReceived::class]);
 
-        $this->post('bee/webhook', [
+        $this->post('basata/webhook', [
             'event' => 'test.event',
             'data' => ['foo' => 'bar'],
         ]);
 
-        Event::assertDispatched(BeeWebhookReceived::class, function ($event) {
+        Event::assertDispatched(BasataWebhookReceived::class, function ($event) {
             return $event->event === 'test.event';
         });
     }
 
     public function test_webhook_dispatches_transaction_status_event(): void
     {
-        Event::fake([BeeWebhookReceived::class, TransactionStatusUpdated::class]);
+        Event::fake([BasataWebhookReceived::class, TransactionStatusUpdated::class]);
 
-        $this->post('bee/webhook', [
+        $this->post('basata/webhook', [
             'event' => 'transaction.completed',
             'data' => [
                 'transaction_id' => 123,
@@ -58,9 +58,9 @@ class WebhookTest extends TestCase
 
     public function test_webhook_dispatches_for_failed_transaction(): void
     {
-        Event::fake([BeeWebhookReceived::class, TransactionStatusUpdated::class]);
+        Event::fake([BasataWebhookReceived::class, TransactionStatusUpdated::class]);
 
-        $this->post('bee/webhook', [
+        $this->post('basata/webhook', [
             'event' => 'transaction.failed',
             'data' => [
                 'transaction_id' => 456,
@@ -76,9 +76,9 @@ class WebhookTest extends TestCase
 
     public function test_webhook_dispatches_for_pending_transaction(): void
     {
-        Event::fake([BeeWebhookReceived::class, TransactionStatusUpdated::class]);
+        Event::fake([BasataWebhookReceived::class, TransactionStatusUpdated::class]);
 
-        $this->post('bee/webhook', [
+        $this->post('basata/webhook', [
             'event' => 'transaction.pending',
             'data' => [
                 'transaction_id' => 789,
@@ -91,54 +91,54 @@ class WebhookTest extends TestCase
 
     public function test_webhook_does_not_dispatch_transaction_event_for_other_events(): void
     {
-        Event::fake([BeeWebhookReceived::class, TransactionStatusUpdated::class]);
+        Event::fake([BasataWebhookReceived::class, TransactionStatusUpdated::class]);
 
-        $this->post('bee/webhook', [
+        $this->post('basata/webhook', [
             'event' => 'account.updated',
             'data' => ['balance' => 100],
         ]);
 
-        Event::assertDispatched(BeeWebhookReceived::class);
+        Event::assertDispatched(BasataWebhookReceived::class);
         Event::assertNotDispatched(TransactionStatusUpdated::class);
     }
 
     public function test_webhook_validates_signature_when_secret_is_set(): void
     {
-        $this->app['config']->set('bee.webhook.secret', 'my-secret');
+        $this->app['config']->set('basata.webhook.secret', 'my-secret');
 
         $payload = json_encode(['event' => 'test']);
         $validSignature = hash_hmac('sha256', $payload, 'my-secret');
 
-        $this->postJson('bee/webhook', ['event' => 'test'], [
-            'X-Bee-Signature' => 'invalid-signature',
+        $this->postJson('basata/webhook', ['event' => 'test'], [
+            'X-Basata-Signature' => 'invalid-signature',
         ])->assertStatus(403);
     }
 
     public function test_webhook_accepts_valid_signature(): void
     {
-        $this->app['config']->set('bee.webhook.secret', 'my-secret');
+        $this->app['config']->set('basata.webhook.secret', 'my-secret');
 
-        Event::fake([BeeWebhookReceived::class]);
+        Event::fake([BasataWebhookReceived::class]);
 
         $payload = json_encode(['event' => 'test']);
         $validSignature = hash_hmac('sha256', $payload, 'my-secret');
 
-        $this->postJson('bee/webhook', ['event' => 'test'], [
-            'X-Bee-Signature' => $validSignature,
+        $this->postJson('basata/webhook', ['event' => 'test'], [
+            'X-Basata-Signature' => $validSignature,
         ])->assertStatus(200);
 
-        Event::assertDispatched(BeeWebhookReceived::class);
+        Event::assertDispatched(BasataWebhookReceived::class);
     }
 
     public function test_webhook_route_is_not_registered_when_disabled(): void
     {
-        $this->app['config']->set('bee.webhook.enabled', false);
+        $this->app['config']->set('basata.webhook.enabled', false);
 
         // Re-boot the service provider
-        $this->app->register(\Ghanem\Bee\BeeServiceProvider::class, true);
+        $this->app->register(\Ghanem\Basata\BasataServiceProvider::class, true);
 
         // The route registered in defineEnvironment still exists,
         // so we test by checking the config instead
-        $this->assertFalse(config('bee.webhook.enabled'));
+        $this->assertFalse(config('basata.webhook.enabled'));
     }
 }

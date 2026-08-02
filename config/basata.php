@@ -3,15 +3,15 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Bee API Credentials
+    | Basata API Credentials
     |--------------------------------------------------------------------------
     */
 
-    'username' => env('BEE_USERNAME', ''),
+    'username' => env('BASATA_USERNAME', ''),
 
-    'password' => env('BEE_PASSWORD', ''),
+    'password' => env('BASATA_PASSWORD', ''),
 
-    'url' => env('BEE_URL', ''),
+    'url' => env('BASATA_URL', ''),
 
     /*
     |--------------------------------------------------------------------------
@@ -24,9 +24,9 @@ return [
     |
     */
 
-    'terminal_id' => env('BEE_TERMINAL_ID', ''),
+    'terminal_id' => env('BASATA_TERMINAL_ID', ''),
 
-    'language' => env('BEE_LANGUAGE', 'en'),
+    'language' => env('BASATA_LANGUAGE', 'en'),
 
     /*
     |--------------------------------------------------------------------------
@@ -40,7 +40,7 @@ return [
     */
 
     'errors' => [
-        'throw' => env('BEE_ERRORS_THROW', true),
+        'throw' => env('BASATA_ERRORS_THROW', true),
     ],
 
     /*
@@ -53,9 +53,9 @@ return [
     */
 
     'retry' => [
-        'tries' => env('BEE_RETRY_TRIES', 3),
-        'delay' => env('BEE_RETRY_DELAY', 100), // milliseconds
-        'multiplier' => env('BEE_RETRY_MULTIPLIER', 2), // exponential backoff multiplier
+        'tries' => env('BASATA_RETRY_TRIES', 3),
+        'delay' => env('BASATA_RETRY_DELAY', 100), // milliseconds
+        'multiplier' => env('BASATA_RETRY_MULTIPLIER', 2), // exponential backoff multiplier
     ],
 
     /*
@@ -68,8 +68,8 @@ return [
     */
 
     'logging' => [
-        'enabled' => env('BEE_LOG_ENABLED', false),
-        'channel' => env('BEE_LOG_CHANNEL', null), // null = default channel
+        'enabled' => env('BASATA_LOG_ENABLED', false),
+        'channel' => env('BASATA_LOG_CHANNEL', null), // null = default channel
     ],
 
     /*
@@ -82,10 +82,10 @@ return [
     */
 
     'cache' => [
-        'enabled' => env('BEE_CACHE_ENABLED', true),
-        'ttl' => env('BEE_CACHE_TTL', 3600), // seconds
-        'prefix' => 'bee_',
-        'store' => env('BEE_CACHE_STORE', null), // null = default store
+        'enabled' => env('BASATA_CACHE_ENABLED', true),
+        'ttl' => env('BASATA_CACHE_TTL', 3600), // seconds
+        'prefix' => 'basata_',
+        'store' => env('BASATA_CACHE_STORE', null), // null = default store
     ],
 
     /*
@@ -98,8 +98,8 @@ return [
     */
 
     'rate_limit' => [
-        'enabled' => env('BEE_RATE_LIMIT_ENABLED', false),
-        'max_attempts' => env('BEE_RATE_LIMIT_MAX', 60), // requests per minute
+        'enabled' => env('BASATA_RATE_LIMIT_ENABLED', false),
+        'max_attempts' => env('BASATA_RATE_LIMIT_MAX', 60), // requests per minute
     ],
 
     /*
@@ -112,9 +112,9 @@ return [
     */
 
     'webhook' => [
-        'enabled' => env('BEE_WEBHOOK_ENABLED', false),
-        'path' => env('BEE_WEBHOOK_PATH', 'bee/webhook'),
-        'secret' => env('BEE_WEBHOOK_SECRET', null),
+        'enabled' => env('BASATA_WEBHOOK_ENABLED', false),
+        'path' => env('BASATA_WEBHOOK_PATH', 'basata/webhook'),
+        'secret' => env('BASATA_WEBHOOK_SECRET', null),
         'middleware' => ['api'],
     ],
 
@@ -128,7 +128,7 @@ return [
     */
 
     'queue' => [
-        'connection' => env('BEE_QUEUE_CONNECTION', null), // null = default
-        'queue' => env('BEE_QUEUE_NAME', 'default'),
+        'connection' => env('BASATA_QUEUE_CONNECTION', null), // null = default
+        'queue' => env('BASATA_QUEUE_NAME', 'default'),
     ],
 ];

@@ -1,6 +1,6 @@
 <?php
 
-namespace Ghanem\Bee\DTOs;
+namespace Ghanem\Basata\DTOs;
 
 class TransactionResult
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Ghanem\Bee\Facades;
+namespace Ghanem\Basata\Facades;
 
-use Ghanem\Bee\BeeService;
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\DTOs\ServiceChargeResult;
-use Ghanem\Bee\DTOs\TransactionResult;
+use Ghanem\Basata\BasataService;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\DTOs\ServiceChargeResult;
+use Ghanem\Basata\DTOs\TransactionResult;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Facade;
 
@@ -34,12 +34,12 @@ use Illuminate\Support\Facades\Facade;
  * @method static Batch batchTransactions(array $transactions, ?string $callbackEvent = null)
  * @method static void clearCache(?string $key = null)
  *
- * @see \Ghanem\Bee\BeeService
+ * @see \Ghanem\Basata\BasataService
  */
-class Bee extends Facade
+class Basata extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return 'ghanem-bee';
+        return 'ghanem-basata';
     }
 }

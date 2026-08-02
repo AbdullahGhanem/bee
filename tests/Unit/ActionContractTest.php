@@ -1,10 +1,10 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Enums\OperationStatus;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Enums\OperationStatus;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -109,7 +109,7 @@ class ActionContractTest extends TestCase
     #[DataProvider('actions')]
     public function test_action_matches_the_v3_0_8_contract(string $method, array $args, string $path, string $action, array $expectedData): void
     {
-        config()->set('bee.terminal_id', '1234567890');
+        config()->set('basata.terminal_id', '1234567890');
         Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
 
         app(ApiClient::class)->{$method}(...$args);

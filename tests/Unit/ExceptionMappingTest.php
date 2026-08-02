@@ -1,17 +1,17 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\Enums\TransactionStatus;
-use Ghanem\Bee\Exceptions\BeeAuthenticationException;
-use Ghanem\Bee\Exceptions\BeeException;
-use Ghanem\Bee\Exceptions\BeeInsufficientBalanceException;
-use Ghanem\Bee\Exceptions\BeeNotFoundException;
-use Ghanem\Bee\Exceptions\BeeRateLimitException;
-use Ghanem\Bee\Exceptions\BeeServerException;
-use Ghanem\Bee\Exceptions\BeeTransactionInProgressException;
-use Ghanem\Bee\Exceptions\BeeValidationException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\Enums\TransactionStatus;
+use Ghanem\Basata\Exceptions\BasataAuthenticationException;
+use Ghanem\Basata\Exceptions\BasataException;
+use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataNotFoundException;
+use Ghanem\Basata\Exceptions\BasataRateLimitException;
+use Ghanem\Basata\Exceptions\BasataServerException;
+use Ghanem\Basata\Exceptions\BasataTransactionInProgressException;
+use Ghanem\Basata\Exceptions\BasataValidationException;
+use Ghanem\Basata\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class ExceptionMappingTest extends TestCase
@@ -26,17 +26,17 @@ class ExceptionMappingTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{int, class-string<BeeException>, string}>
+     * @return iterable<string, array{int, class-string<BasataException>, string}>
      */
     public static function documentedCodeProvider(): iterable
     {
-        yield 'auth' => [1003, BeeAuthenticationException::class, 'Incorrect login or password'];
-        yield 'validation' => [1017, BeeValidationException::class, 'Wrong amount'];
-        yield 'insufficient-balance' => [1016, BeeInsufficientBalanceException::class, 'Insufficient balance'];
-        yield 'rate-limit' => [1033, BeeRateLimitException::class, 'Rate limit exceeded'];
-        yield 'in-progress' => [1034, BeeTransactionInProgressException::class, 'Transaction is in progress, please try again later'];
-        yield 'not-found' => [1026, BeeNotFoundException::class, 'Transaction not found'];
-        yield 'server' => [2000, BeeServerException::class, 'Internal server error'];
+        yield 'auth' => [1003, BasataAuthenticationException::class, 'Incorrect login or password'];
+        yield 'validation' => [1017, BasataValidationException::class, 'Wrong amount'];
+        yield 'insufficient-balance' => [1016, BasataInsufficientBalanceException::class, 'Insufficient balance'];
+        yield 'rate-limit' => [1033, BasataRateLimitException::class, 'Rate limit exceeded'];
+        yield 'in-progress' => [1034, BasataTransactionInProgressException::class, 'Transaction is in progress, please try again later'];
+        yield 'not-found' => [1026, BasataNotFoundException::class, 'Transaction not found'];
+        yield 'server' => [2000, BasataServerException::class, 'Internal server error'];
     }
 
     #[DataProvider('documentedCodeProvider')]
@@ -47,7 +47,7 @@ class ExceptionMappingTest extends TestCase
     ): void {
         $payload = ['raw' => 'response', 'code' => $code];
 
-        $exception = BeeException::fromCode($code, $payload);
+        $exception = BasataException::fromCode($code, $payload);
 
         $this->assertInstanceOf($expectedClass, $exception);
         $this->assertSame($code, $exception->apiCode);
@@ -60,9 +60,9 @@ class ExceptionMappingTest extends TestCase
     {
         $payload = ['raw' => 'response'];
 
-        $exception = BeeException::fromCode(9999, $payload);
+        $exception = BasataException::fromCode(9999, $payload);
 
-        $this->assertInstanceOf(BeeServerException::class, $exception);
+        $this->assertInstanceOf(BasataServerException::class, $exception);
         $this->assertSame(9999, $exception->apiCode);
         $this->assertSame('Unknown API error', $exception->getMessage());
         $this->assertSame($payload, $exception->payload);
@@ -72,9 +72,9 @@ class ExceptionMappingTest extends TestCase
     {
         $payload = ['raw' => 'response'];
 
-        $exception = BeeException::fromCode(null, $payload);
+        $exception = BasataException::fromCode(null, $payload);
 
-        $this->assertInstanceOf(BeeServerException::class, $exception);
+        $this->assertInstanceOf(BasataServerException::class, $exception);
         $this->assertNull($exception->apiCode);
         $this->assertSame('Unknown API error', $exception->getMessage());
         $this->assertSame($payload, $exception->payload);

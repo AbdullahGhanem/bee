@@ -1,11 +1,11 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\Facades\Bee;
-use Ghanem\Bee\Jobs\BatchTransactionJob;
-use Ghanem\Bee\Jobs\ProcessTransactionPaymentJob;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\Facades\Basata;
+use Ghanem\Basata\Jobs\BatchTransactionJob;
+use Ghanem\Basata\Jobs\ProcessTransactionPaymentJob;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -16,7 +16,7 @@ class AsyncTest extends TestCase
     {
         Queue::fake();
 
-        Bee::transactionPaymentAsync([
+        Basata::transactionPaymentAsync([
             'account_number' => '12345',
             'service_id' => 10,
             'amount' => 100,
@@ -32,7 +32,7 @@ class AsyncTest extends TestCase
     {
         Queue::fake();
 
-        Bee::transactionPaymentAsync(['service_id' => 10], 'ar');
+        Basata::transactionPaymentAsync(['service_id' => 10], 'ar');
 
         Queue::assertPushed(ProcessTransactionPaymentJob::class, function ($job) {
             return $job->lang === 'ar';
@@ -49,7 +49,7 @@ class AsyncTest extends TestCase
             ['action' => 'payment', 'data' => ['service_id' => 12, 'amount' => 200]],
         ];
 
-        Bee::batchTransactions($transactions);
+        Basata::batchTransactions($transactions);
 
         Bus::assertBatched(function ($batch) {
             return $batch->jobs->count() === 3;
@@ -60,7 +60,7 @@ class AsyncTest extends TestCase
     {
         Bus::fake();
 
-        Bee::batchTransactions([
+        Basata::batchTransactions([
             ['data' => ['service_id' => 10, 'amount' => 50]],
         ]);
 
@@ -76,7 +76,7 @@ class AsyncTest extends TestCase
     {
         Bus::fake();
 
-        Bee::batchTransactions(
+        Basata::batchTransactions(
             [['action' => 'payment', 'data' => ['service_id' => 10]]],
             'App\\Events\\TransactionProcessed'
         );
@@ -92,7 +92,7 @@ class AsyncTest extends TestCase
     {
         Bus::fake();
 
-        Bee::batchTransactions([
+        Basata::batchTransactions([
             ['action' => 'payment', 'data' => ['service_id' => 10], 'lang' => 'ar'],
         ]);
 
@@ -104,11 +104,11 @@ class AsyncTest extends TestCase
     public function test_process_transaction_payment_job_executes(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 1],
             ], 200),
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 99],
             ], 200),
@@ -126,7 +126,7 @@ class AsyncTest extends TestCase
             lang: 'en',
         );
 
-        $job->handle(app(\Ghanem\Bee\BeeService::class));
+        $job->handle(app(\Ghanem\Basata\BasataService::class));
 
         Http::assertSentCount(2);
     }

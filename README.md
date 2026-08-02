@@ -1,8 +1,8 @@
-# Bee
+# Basata
 
-[![Latest Stable Version](https://poser.pugx.org/ghanem/bee/v/stable.svg)](https://packagist.org/packages/ghanem/bee) [![License](https://poser.pugx.org/ghanem/bee/license.svg)](https://packagist.org/packages/ghanem/bee) [![Total Downloads](https://poser.pugx.org/ghanem/bee/downloads.svg)](https://packagist.org/packages/ghanem/bee)
+[![Latest Stable Version](https://poser.pugx.org/ghanem/basata/v/stable.svg)](https://packagist.org/packages/ghanem/basata) [![License](https://poser.pugx.org/ghanem/basata/license.svg)](https://packagist.org/packages/ghanem/basata) [![Total Downloads](https://poser.pugx.org/ghanem/basata/downloads.svg)](https://packagist.org/packages/ghanem/basata)
 
-A Laravel package that provides an interface to the Bee payment services API.
+A Laravel package that provides an interface to the Basata payment services API.
 
 ## Requirements
 
@@ -12,13 +12,13 @@ A Laravel package that provides an interface to the Bee payment services API.
 ## Installation
 
 ```bash
-composer require ghanem/bee
+composer require ghanem/basata
 ```
 
 Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --provider="Ghanem\Bee\BeeServiceProvider" --tag="bee-config"
+php artisan vendor:publish --provider="Ghanem\Basata\BasataServiceProvider" --tag="basata-config"
 ```
 
 ## Configuration
@@ -26,42 +26,42 @@ php artisan vendor:publish --provider="Ghanem\Bee\BeeServiceProvider" --tag="bee
 Add the following to your `.env` file:
 
 ```env
-BEE_USERNAME=your-username
-BEE_PASSWORD=your-password
-BEE_URL=https://your-bee-api-url.com/
+BASATA_USERNAME=your-username
+BASATA_PASSWORD=your-password
+BASATA_URL=https://your-basata-api-url.com/
 ```
 
 ## Usage
 
-You can use the `Bee` facade or resolve `BeeService` from the container.
+You can use the `Basata` facade or resolve `BasataService` from the container.
 
 ### Service & Category Information
 
 ```php
-use Ghanem\Bee\Facades\Bee;
+use Ghanem\Basata\Facades\Basata;
 
 // Get all categories
-$categories = Bee::getCategoryList();
+$categories = Basata::getCategoryList();
 
 // Get category service list
-$categoryServices = Bee::getCategoryServiceList();
+$categoryServices = Basata::getCategoryServiceList();
 
 // Get provider list by category
-$providers = Bee::getProviderList(categoryId: 2);
+$providers = Basata::getProviderList(categoryId: 2);
 
 // Get all services
-$services = Bee::getServiceList();
+$services = Basata::getServiceList();
 
 // Get service input/output parameters
-$inputParams = Bee::getServiceInputParameterList();
-$outputParams = Bee::getServiceOutputParameterList();
+$inputParams = Basata::getServiceInputParameterList();
+$outputParams = Basata::getServiceOutputParameterList();
 ```
 
 ### Transactions
 
 ```php
 // Transaction inquiry
-$inquiry = Bee::transactionInquiry([
+$inquiry = Basata::transactionInquiry([
     'account_number' => '12345',
     'service_id' => 10,
     'input_parameter_list' => [
@@ -70,7 +70,7 @@ $inquiry = Bee::transactionInquiry([
 ]);
 
 // Transaction payment
-$payment = Bee::transactionPayment([
+$payment = Basata::transactionPayment([
     'account_number' => '12345',
     'service_id' => 10,
     'external_id' => 'order-001',
@@ -83,20 +83,20 @@ $payment = Bee::transactionPayment([
 ]);
 
 // Get transaction details by ID
-$transaction = Bee::getTransaction(123);
+$transaction = Basata::getTransaction(123);
 
 // Get transaction by external ID
-$transaction = Bee::getTransaction('order-001', 'external_id');
+$transaction = Basata::getTransaction('order-001', 'external_id');
 ```
 
 ### Account & Billing
 
 ```php
 // Get account info
-$account = Bee::getAccountInfo();
+$account = Basata::getAccountInfo();
 
 // Get bills amount (performs inquiry and returns amount)
-$bills = Bee::getBillsAmount([
+$bills = Basata::getBillsAmount([
     'service_id' => 10,
     'account_number' => '12345',
 ]);
@@ -106,14 +106,14 @@ $bills = Bee::getBillsAmount([
 
 ```php
 // Calculate service charge for an amount
-$result = Bee::calculateServiceCharge([
+$result = Basata::calculateServiceCharge([
     'service_id' => 10,
     'amount' => 100,
 ]);
 // Returns: ['service_id' => 10, 'amount' => 100, 'service_charge' => 5, 'total_amount' => 105]
 
 // Reverse calculate (from total amount back to base amount)
-$result = Bee::calculateServiceChargeReverse([
+$result = Basata::calculateServiceChargeReverse([
     'service_id' => 10,
     'amount' => 105, // total amount including charge
 ]);
@@ -125,8 +125,8 @@ $result = Bee::calculateServiceChargeReverse([
 Most methods accept a language parameter (defaults to `'en'`):
 
 ```php
-$categories = Bee::getCategoryList('ar');
-$services = Bee::getServiceList('ar');
+$categories = Basata::getCategoryList('ar');
+$services = Basata::getServiceList('ar');
 ```
 
 ### DTOs (Typed Responses)
@@ -134,29 +134,29 @@ $services = Bee::getServiceList('ar');
 Use `*Dto` methods for typed response objects instead of raw arrays/collections:
 
 ```php
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\DTOs\TransactionResult;
-use Ghanem\Bee\DTOs\ServiceChargeResult;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\DTOs\TransactionResult;
+use Ghanem\Basata\DTOs\ServiceChargeResult;
 
 // API response DTO
-$response = Bee::getCategoryListDto(); // returns ApiResponse
+$response = Basata::getCategoryListDto(); // returns ApiResponse
 $response->success;    // bool
 $response->data;       // array
 $response->statusCode; // int
 $response->get('categories.0.name'); // dot notation access
 
 // Transaction DTO
-$tx = Bee::getTransactionDto(123); // returns TransactionResult
+$tx = Basata::getTransactionDto(123); // returns TransactionResult
 $tx->transactionId; // ?int
 $tx->amount;        // ?float
 $tx->serviceCharge; // ?float
 $tx->totalAmount;   // ?float
 
-$inquiry = Bee::transactionInquiryDto($data);  // TransactionResult
-$payment = Bee::transactionPaymentDto($data);  // TransactionResult
+$inquiry = Basata::transactionInquiryDto($data);  // TransactionResult
+$payment = Basata::transactionPaymentDto($data);  // TransactionResult
 
 // Service charge DTO
-$charge = Bee::calculateServiceChargeDto([
+$charge = Basata::calculateServiceChargeDto([
     'service_id' => 10,
     'amount' => 100,
 ]); // returns ServiceChargeResult
@@ -171,9 +171,9 @@ $charge->totalAmount;   // float
 Failed API requests are automatically retried with exponential backoff:
 
 ```env
-BEE_RETRY_TRIES=3       # Number of retry attempts
-BEE_RETRY_DELAY=100     # Initial delay in milliseconds
-BEE_RETRY_MULTIPLIER=2  # Backoff multiplier
+BASATA_RETRY_TRIES=3       # Number of retry attempts
+BASATA_RETRY_DELAY=100     # Initial delay in milliseconds
+BASATA_RETRY_MULTIPLIER=2  # Backoff multiplier
 ```
 
 ### Request/Response Logging
@@ -181,8 +181,8 @@ BEE_RETRY_MULTIPLIER=2  # Backoff multiplier
 Enable logging to debug API calls. Credentials are automatically redacted:
 
 ```env
-BEE_LOG_ENABLED=true
-BEE_LOG_CHANNEL=stack   # Optional: specific log channel
+BASATA_LOG_ENABLED=true
+BASATA_LOG_CHANNEL=stack   # Optional: specific log channel
 ```
 
 ### Caching
@@ -190,17 +190,17 @@ BEE_LOG_CHANNEL=stack   # Optional: specific log channel
 Service and category lists are automatically cached to reduce API calls:
 
 ```env
-BEE_CACHE_ENABLED=true    # Enabled by default
-BEE_CACHE_TTL=3600        # Cache lifetime in seconds
-BEE_CACHE_STORE=redis     # Optional: specific cache store
+BASATA_CACHE_ENABLED=true    # Enabled by default
+BASATA_CACHE_TTL=3600        # Cache lifetime in seconds
+BASATA_CACHE_STORE=redis     # Optional: specific cache store
 ```
 
 ```php
 // Clear all cached data
-Bee::clearCache();
+Basata::clearCache();
 
 // Clear specific cache key
-Bee::clearCache('category_list_en');
+Basata::clearCache('category_list_en');
 ```
 
 ### Rate Limiting
@@ -208,8 +208,8 @@ Bee::clearCache('category_list_en');
 Limit the number of API requests per minute:
 
 ```env
-BEE_RATE_LIMIT_ENABLED=true
-BEE_RATE_LIMIT_MAX=60      # Max requests per minute
+BASATA_RATE_LIMIT_ENABLED=true
+BASATA_RATE_LIMIT_MAX=60      # Max requests per minute
 ```
 
 ### Webhooks
@@ -217,19 +217,19 @@ BEE_RATE_LIMIT_MAX=60      # Max requests per minute
 Receive transaction status updates via webhooks:
 
 ```env
-BEE_WEBHOOK_ENABLED=true
-BEE_WEBHOOK_PATH=bee/webhook
-BEE_WEBHOOK_SECRET=your-secret  # Optional: signature validation
+BASATA_WEBHOOK_ENABLED=true
+BASATA_WEBHOOK_PATH=basata/webhook
+BASATA_WEBHOOK_SECRET=your-secret  # Optional: signature validation
 ```
 
 Listen for webhook events in your application:
 
 ```php
-use Ghanem\Bee\Events\BeeWebhookReceived;
-use Ghanem\Bee\Events\TransactionStatusUpdated;
+use Ghanem\Basata\Events\BasataWebhookReceived;
+use Ghanem\Basata\Events\TransactionStatusUpdated;
 
 // Listen to all webhook events
-Event::listen(BeeWebhookReceived::class, function ($event) {
+Event::listen(BasataWebhookReceived::class, function ($event) {
     // $event->event   - event name (e.g. 'transaction.completed')
     // $event->payload - full webhook payload
 });
@@ -247,34 +247,34 @@ Event::listen(TransactionStatusUpdated::class, function ($event) {
 Process transactions asynchronously using Laravel queues:
 
 ```env
-BEE_QUEUE_CONNECTION=redis   # Optional: queue connection
-BEE_QUEUE_NAME=payments      # Optional: queue name
+BASATA_QUEUE_CONNECTION=redis   # Optional: queue connection
+BASATA_QUEUE_NAME=payments      # Optional: queue name
 ```
 
 ```php
 // Dispatch a single payment to the queue
-Bee::transactionPaymentAsync([
+Basata::transactionPaymentAsync([
     'account_number' => '12345',
     'service_id' => 10,
     'amount' => 100,
 ]);
 
 // Batch multiple transactions
-$batch = Bee::batchTransactions([
+$batch = Basata::batchTransactions([
     ['action' => 'payment', 'data' => ['service_id' => 10, 'amount' => 100]],
     ['action' => 'inquiry', 'data' => ['service_id' => 11, 'account_number' => '123']],
     ['action' => 'payment', 'data' => ['service_id' => 12, 'amount' => 200], 'lang' => 'ar'],
 ]);
 
 // Batch with callback event
-Bee::batchTransactions($transactions, App\Events\TransactionProcessed::class);
+Basata::batchTransactions($transactions, App\Events\TransactionProcessed::class);
 ```
 
 ## Changelog
 
 ### Done
 
-- [x] Bee API integration (services, categories, providers)
+- [x] Basata API integration (services, categories, providers)
 - [x] Transaction inquiry and payment
 - [x] Service charge calculation (forward and reverse)
 - [x] Bills amount retrieval

@@ -1,12 +1,12 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\Enums\ErrorCode;
-use Ghanem\Bee\Exceptions\BeeAuthenticationException;
-use Ghanem\Bee\Exceptions\BeeInsufficientBalanceException;
-use Ghanem\Bee\Exceptions\BeeRateLimitException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\Enums\ErrorCode;
+use Ghanem\Basata\Exceptions\BasataAuthenticationException;
+use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataRateLimitException;
+use Ghanem\Basata\Tests\TestCase;
 
 class ErrorCodeTest extends TestCase
 {
@@ -20,9 +20,9 @@ class ErrorCodeTest extends TestCase
 
     public function test_codes_map_to_exception_classes(): void
     {
-        $this->assertSame(BeeInsufficientBalanceException::class, ErrorCode::InsufficientBalance->exceptionClass());
-        $this->assertSame(BeeRateLimitException::class, ErrorCode::RateLimitExceeded->exceptionClass());
-        $this->assertSame(BeeAuthenticationException::class, ErrorCode::IncorrectCredentials->exceptionClass());
+        $this->assertSame(BasataInsufficientBalanceException::class, ErrorCode::InsufficientBalance->exceptionClass());
+        $this->assertSame(BasataRateLimitException::class, ErrorCode::RateLimitExceeded->exceptionClass());
+        $this->assertSame(BasataAuthenticationException::class, ErrorCode::IncorrectCredentials->exceptionClass());
     }
 
     public function test_unknown_code_is_not_swallowed(): void

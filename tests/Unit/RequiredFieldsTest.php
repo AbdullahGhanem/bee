@@ -1,11 +1,11 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Enums\ErrorCode;
-use Ghanem\Bee\Exceptions\BeeValidationException;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Enums\ErrorCode;
+use Ghanem\Basata\Exceptions\BasataValidationException;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * amount => 1.5, service_id => 14, account_number => 2, etc. A forgotten
  * `amount` would silently post a real 1.5 EGP payment against service 14
  * instead of failing loudly. Each required field must now throw
- * BeeValidationException with the documented code instead.
+ * BasataValidationException with the documented code instead.
  */
 class RequiredFieldsTest extends TestCase
 {
@@ -63,8 +63,8 @@ class RequiredFieldsTest extends TestCase
 
         try {
             app(ApiClient::class)->{$method}($data);
-            $this->fail("Expected BeeValidationException for missing `{$omittedField}`");
-        } catch (BeeValidationException $e) {
+            $this->fail("Expected BasataValidationException for missing `{$omittedField}`");
+        } catch (BasataValidationException $e) {
             $this->assertSame($expectedCode->value, $e->apiCode);
         }
 
@@ -75,7 +75,7 @@ class RequiredFieldsTest extends TestCase
     {
         Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
 
-        $this->expectException(BeeValidationException::class);
+        $this->expectException(BasataValidationException::class);
 
         app(ApiClient::class)->transactionPayment([
             'service_version' => 3,

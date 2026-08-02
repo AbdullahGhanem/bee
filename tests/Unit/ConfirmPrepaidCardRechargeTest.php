@@ -1,17 +1,17 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\ApiClient;
-use Ghanem\Bee\Enums\OperationStatus;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Enums\OperationStatus;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
 class ConfirmPrepaidCardRechargeTest extends TestCase
 {
     public function test_it_sends_the_documented_request(): void
     {
-        config()->set('bee.terminal_id', '1234567890');
+        config()->set('basata.terminal_id', '1234567890');
         Http::fake(['*' => Http::response(['success' => true, 'data' => ['info' => 'ok']], 200)]);
 
         app(ApiClient::class)->confirmPrepaidCardRecharge('225615364271', OperationStatus::Success);

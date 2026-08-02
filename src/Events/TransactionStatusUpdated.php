@@ -1,6 +1,6 @@
 <?php
 
-namespace Ghanem\Bee\Events;
+namespace Ghanem\Basata\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;

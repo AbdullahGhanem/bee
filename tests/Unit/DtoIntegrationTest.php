@@ -1,12 +1,12 @@
 <?php
 
-namespace Ghanem\Bee\Tests\Unit;
+namespace Ghanem\Basata\Tests\Unit;
 
-use Ghanem\Bee\DTOs\ApiResponse;
-use Ghanem\Bee\DTOs\ServiceChargeResult;
-use Ghanem\Bee\DTOs\TransactionResult;
-use Ghanem\Bee\Facades\Bee;
-use Ghanem\Bee\Tests\TestCase;
+use Ghanem\Basata\DTOs\ApiResponse;
+use Ghanem\Basata\DTOs\ServiceChargeResult;
+use Ghanem\Basata\DTOs\TransactionResult;
+use Ghanem\Basata\Facades\Basata;
+use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
 class DtoIntegrationTest extends TestCase
@@ -14,19 +14,19 @@ class DtoIntegrationTest extends TestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('bee.cache.enabled', false);
+        $app['config']->set('basata.cache.enabled', false);
     }
 
     public function test_get_category_list_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['categories' => [['id' => 1]]],
             ], 200),
         ]);
 
-        $result = Bee::getCategoryListDto();
+        $result = Basata::getCategoryListDto();
 
         $this->assertInstanceOf(ApiResponse::class, $result);
         $this->assertTrue($result->success);
@@ -36,13 +36,13 @@ class DtoIntegrationTest extends TestCase
     public function test_get_service_list_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_list' => []],
             ], 200),
         ]);
 
-        $result = Bee::getServiceListDto();
+        $result = Basata::getServiceListDto();
 
         $this->assertInstanceOf(ApiResponse::class, $result);
         $this->assertTrue($result->success);
@@ -51,13 +51,13 @@ class DtoIntegrationTest extends TestCase
     public function test_get_transaction_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 123, 'amount' => 50],
             ], 200),
         ]);
 
-        $result = Bee::getTransactionDto(123);
+        $result = Basata::getTransactionDto(123);
 
         $this->assertInstanceOf(TransactionResult::class, $result);
         $this->assertTrue($result->success);
@@ -68,12 +68,12 @@ class DtoIntegrationTest extends TestCase
     public function test_get_transaction_dto_with_error(): void
     {
         Http::fake([
-            'https://api.bee.test/report' => Http::response([
+            'https://api.basata.test/report' => Http::response([
                 'message' => 'Transaction not found',
             ], 404),
         ]);
 
-        $result = Bee::getTransactionDto(999);
+        $result = Basata::getTransactionDto(999);
 
         $this->assertInstanceOf(TransactionResult::class, $result);
         $this->assertFalse($result->success);
@@ -83,17 +83,17 @@ class DtoIntegrationTest extends TestCase
     public function test_transaction_inquiry_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 3],
             ], 200),
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => 100, 'amount' => 50],
             ], 200),
         ]);
 
-        $result = Bee::transactionInquiryDto([
+        $result = Basata::transactionInquiryDto([
             'account_number' => '123',
             'service_id' => 10,
         ]);
@@ -106,11 +106,11 @@ class DtoIntegrationTest extends TestCase
     public function test_transaction_payment_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => ['service_version' => 3],
             ], 200),
-            'https://api.bee.test/transaction' => Http::response([
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => [
                     'transaction_id' => 200,
@@ -121,7 +121,7 @@ class DtoIntegrationTest extends TestCase
             ], 200),
         ]);
 
-        $result = Bee::transactionPaymentDto([
+        $result = Basata::transactionPaymentDto([
             'account_number' => '123',
             'service_id' => 10,
             'external_id' => 'ext-1',
@@ -141,7 +141,7 @@ class DtoIntegrationTest extends TestCase
     public function test_calculate_service_charge_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -156,7 +156,7 @@ class DtoIntegrationTest extends TestCase
             ], 200),
         ]);
 
-        $result = Bee::calculateServiceChargeDto([
+        $result = Basata::calculateServiceChargeDto([
             'service_id' => 10,
             'amount' => 100,
         ]);
@@ -171,7 +171,7 @@ class DtoIntegrationTest extends TestCase
     public function test_calculate_service_charge_reverse_dto(): void
     {
         Http::fake([
-            'https://api.bee.test/service' => Http::response([
+            'https://api.basata.test/service' => Http::response([
                 'success' => true,
                 'data' => [
                     'service_list' => [
@@ -186,7 +186,7 @@ class DtoIntegrationTest extends TestCase
             ], 200),
         ]);
 
-        $result = Bee::calculateServiceChargeReverseDto([
+        $result = Basata::calculateServiceChargeReverseDto([
             'service_id' => 10,
             'amount' => 110,
         ]);
