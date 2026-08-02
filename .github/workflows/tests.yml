@@ -1,0 +1,103 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Every row is fully explicit (php + laravel + testbench + phpunit) rather
+    # than a php/laravel cross-product trimmed with `exclude:` — GitHub silently
+    # merges `include:` rows that differ in only one key onto an existing job,
+    # dropping a leg of the matrix. Explicit rows have no key in common to merge
+    # on, so that failure mode can't happen. Each cell below was verified for
+    # real: `composer update --dry-run` in a throwaway dir with `config.platform.php`
+    # pinned to the row's PHP version resolved laravel/framework, orchestra/testbench
+    # and phpunit/phpunit successfully (see task-5-report.md). Laravel 10→testbench 8,
+    # 11→9, 12→10, 13→11, in lockstep.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.1'
+            laravel: '10.*'
+            testbench: '8.*'
+            phpunit: '10.*'
+          - php: '8.2'
+            laravel: '10.*'
+            testbench: '8.*'
+            phpunit: '10.*'
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '9.*'
+            phpunit: '11.*'
+          - php: '8.2'
+            laravel: '12.*'
+            testbench: '10.*'
+            phpunit: '11.*'
+          - php: '8.3'
+            laravel: '10.*'
+            testbench: '8.*'
+            phpunit: '10.*'
+          - php: '8.3'
+            laravel: '11.*'
+            testbench: '9.*'
+            phpunit: '12.*'
+          - php: '8.3'
+            laravel: '12.*'
+            testbench: '10.*'
+            phpunit: '12.*'
+          - php: '8.3'
+            laravel: '13.*'
+            testbench: '11.*'
+            phpunit: '12.*'
+          - php: '8.4'
+            laravel: '10.*'
+            testbench: '8.*'
+            phpunit: '10.*'
+          - php: '8.4'
+            laravel: '11.*'
+            testbench: '9.*'
+            phpunit: '12.*'
+          - php: '8.4'
+            laravel: '12.*'
+            testbench: '10.*'
+            phpunit: '12.*'
+          - php: '8.4'
+            laravel: '13.*'
+            testbench: '11.*'
+            phpunit: '12.*'
+        # Not needed: the matrix above has no invalid php/laravel pairing to
+        # begin with (Laravel 13 needs PHP 8.3+; Laravel 11/12 need PHP 8.2+;
+        # Laravel 10 supports PHP 8.1+ — every row already respects this).
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, bcmath, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: |
+          # Laravel 10 and 11 are past their security-support window, so every
+          # release Composer would otherwise pick is flagged by an advisory and
+          # silently skipped, falling back to unreleased branch heads instead of
+          # a real tagged version. This package still supports both, so the
+          # audisory gate is turned off for CI installs.
+          composer config policy.advisories.block false --no-interaction
+          composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/http:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" "phpunit/phpunit:${{ matrix.phpunit }}" --no-interaction --no-update
+          composer update --prefer-dist --no-interaction
+
+      - name: Run test suite
+        run: vendor/bin/phpunit
