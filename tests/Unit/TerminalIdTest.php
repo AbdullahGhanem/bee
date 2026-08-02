@@ -3,6 +3,7 @@
 namespace Ghanem\Bee\Tests\Unit;
 
 use Ghanem\Bee\ApiClient;
+use Ghanem\Bee\Facades\Bee;
 use Ghanem\Bee\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 
@@ -30,5 +31,19 @@ class TerminalIdTest extends TestCase
 
         Http::assertSentCount(3);
         Http::assertSent(fn ($request) => $request['terminal_id'] === 'T-42');
+    }
+
+    public function test_dto_methods_send_the_configured_terminal_id(): void
+    {
+        config()->set('bee.terminal_id', 'DTO-T-42');
+        config()->set('bee.cache.enabled', false);
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        Bee::getCategoryListDto();
+        Bee::getServiceListDto();
+        Bee::getTransactionDto(123);
+
+        Http::assertSentCount(3);
+        Http::assertSent(fn ($request) => $request['terminal_id'] === 'DTO-T-42');
     }
 }

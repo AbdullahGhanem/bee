@@ -99,7 +99,7 @@ class BeeService
     public function getCategoryListDto(string $lang = 'en'): ApiResponse
     {
         return $this->client->requestDto('service', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => 'GetCategoryList',
             'version' => 2,
             'language' => $lang,
@@ -110,7 +110,7 @@ class BeeService
     public function getServiceListDto(string $lang = 'en'): ApiResponse
     {
         return $this->client->requestDto('service', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => 'GetServiceList',
             'version' => 2,
             'language' => $lang,
@@ -121,7 +121,7 @@ class BeeService
     public function getTransactionDto(int|string $id, string $type = 'id', string $lang = 'en'): TransactionResult
     {
         $response = $this->client->requestDto('report', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->client->resolveTerminalId(),
             'action' => $type === 'external_id' ? 'GetTransactionByExternalId' : 'GetTransactionDetails',
             'version' => 2,
             'language' => $lang,

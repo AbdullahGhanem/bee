@@ -98,7 +98,12 @@ class ApiClient
         return $payload;
     }
 
-    protected function resolveTerminalId(?string $terminalId): string
+    /**
+     * Public so other classes composing an ApiClient (e.g. BeeService's DTO
+     * methods) can reuse the same config resolution + validation instead of
+     * duplicating it.
+     */
+    public function resolveTerminalId(?string $terminalId = null): string
     {
         $terminalId ??= config('bee.terminal_id');
 
@@ -109,7 +114,7 @@ class ApiClient
         return $terminalId;
     }
 
-    protected function resolveLanguage(?string $lang): string
+    public function resolveLanguage(?string $lang = null): string
     {
         return $lang ?? config('bee.language', 'en');
     }
