@@ -455,24 +455,55 @@ BASATA_QUEUE_CONNECTION=redis   # Optional: queue connection
 BASATA_QUEUE_NAME=payments      # Optional: queue name
 ```
 
+The queued jobs run the *same* validation as the synchronous calls, so every
+required field must be present or the job throws on the worker:
+
 ```php
 // Dispatch a single payment to the queue
 Basata::transactionPaymentAsync([
     'account_number' => '12345',
     'service_id' => 10,
+    'external_id' => 'order-001',
     'amount' => 100,
+    'service_charge' => 5,
+    'total_amount' => 105,
+    'quantity' => 1,
 ]);
 
 // Batch multiple transactions
 $batch = Basata::batchTransactions([
-    ['action' => 'payment', 'data' => ['service_id' => 10, 'amount' => 100]],
-    ['action' => 'inquiry', 'data' => ['service_id' => 11, 'account_number' => '123']],
-    ['action' => 'payment', 'data' => ['service_id' => 12, 'amount' => 200], 'lang' => 'ar'],
+    ['action' => 'payment', 'data' => [
+        'account_number' => '12345',
+        'service_id' => 10,
+        'external_id' => 'order-002',
+        'amount' => 100,
+        'total_amount' => 105,
+        'quantity' => 1,
+    ]],
+    ['action' => 'inquiry', 'data' => [
+        'account_number' => '123',
+        'service_id' => 11,
+    ]],
+    ['action' => 'payment', 'data' => [
+        'account_number' => '12345',
+        'service_id' => 12,
+        'external_id' => 'order-003',
+        'amount' => 200,
+        'total_amount' => 210,
+        'quantity' => 1,
+    ], 'lang' => 'ar'],
 ]);
 
 // Batch with callback event
 Basata::batchTransactions($transactions, App\Events\TransactionProcessed::class);
 ```
+
+`transactionPaymentAsync()` dispatches `TransactionStatusUpdated` carrying the
+API's **actual** status (`SUCCESS`, `IN_PROGRESS`, `ERROR`, `DEPOSIT_ERROR`) —
+`success: true` only means the request was accepted, so listeners must check
+`$event->status` (see [Transaction Status](#transaction-status)) before
+treating a payment as done. A response with no status at all is reported as
+`IN_PROGRESS`.
 
 ## Migrating from `ghanem/bee`
 
