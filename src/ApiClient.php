@@ -11,9 +11,15 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class ApiClient
 {
+    protected const REDACTED = '[REDACTED]';
+
+    /** Fallback for a published config file that predates `logging.redact`. */
+    protected const REDACT_KEYS = ['pin', 'card', 'voucher', 'serial', 'secret', 'password', 'expiry', 'account_number'];
+
     /**
      * terminal_id and language are resolved and injected here — the same
      * choke point as login/password — so no caller (action method, DTO
@@ -543,15 +549,67 @@ class ApiClient
     }
 
     /**
-     * Single choke point for credential redaction — the request log and the
+     * Single choke point for request-side redaction — the request log and the
      * error payload both go through it, so neither can leak `login`/`password`
-     * into a log line or back to the caller.
+     * into a log line or back to the caller. Credentials are dropped outright;
+     * everything else the redact list matches (account numbers, and the
+     * `card_data` §5.9 puts in `input_parameter_list`) is masked, so the log
+     * still shows which fields were sent.
      */
     protected function withoutCredentials(array $params): array
     {
         unset($params['login'], $params['password']);
 
-        return $params;
+        return $this->redactSensitive($params);
+    }
+
+    /**
+     * Masks sensitive values anywhere in a request or response payload.
+     *
+     * Responses are the reason this exists: GetTransactionDetails returns the
+     * voucher PIN and expiry date in `details_list` (FAQ A10 step 2), which
+     * logResponse() used to write to the log verbatim. Values are masked
+     * rather than whole blocks dropped — the log is for debugging, so the
+     * shape has to survive.
+     */
+    protected function redactSensitive(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_string($key) && $this->isSensitiveKey($key)) {
+                $data[$key] = self::REDACTED;
+                continue;
+            }
+
+            if (! is_array($value)) {
+                continue;
+            }
+
+            // {"key": …, "value": …} pairs — 4.11 Output Parameter (used by
+            // `details_list`) and Input Parameter (`input_parameter_list`)
+            // name the secret in `key` and carry it in `value`.
+            if (isset($value['key']) && is_string($value['key'])
+                && array_key_exists('value', $value)
+                && $this->isSensitiveKey($value['key'])) {
+                $value['value'] = self::REDACTED;
+            }
+
+            $data[$key] = $this->redactSensitive($value);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Substring match, so `pin` also covers `voucher_pin` and `card` covers
+     * `card_data`/`card_number`. Deliberately over- rather than under-matches:
+     * a redacted non-secret costs a debugging round trip, a logged PIN costs
+     * a voucher.
+     */
+    protected function isSensitiveKey(string $key): bool
+    {
+        $needles = config('basata.logging.redact', self::REDACT_KEYS);
+
+        return $needles !== [] && Str::contains(Str::lower($key), $needles);
     }
 
     protected function logResponse(string $endpoint, array $data, int $statusCode, bool $isError = false): void
@@ -566,7 +624,7 @@ class ApiClient
             ->$method('Basata API Response', [
                 'endpoint' => $endpoint,
                 'status_code' => $statusCode,
-                'response' => $data,
+                'response' => $this->redactSensitive($data),
             ]);
     }
 

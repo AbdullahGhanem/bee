@@ -443,12 +443,31 @@ BASATA_RETRY_MULTIPLIER=2  # Backoff multiplier
 
 ### Request/Response Logging
 
-Enable logging to debug API calls. Credentials are automatically redacted:
+Enable logging to debug API calls. `login`/`password` are dropped from every
+log line and from the error payload returned to the caller:
 
 ```env
 BASATA_LOG_ENABLED=true
 BASATA_LOG_CHANNEL=stack   # Optional: specific log channel
 ```
+
+Secrets in the payload itself are masked, on both the request and the response
+side — `GetTransactionDetails` returns the voucher PIN and expiry date in
+`details_list` (FAQ A10) and `input_parameter_list` can carry `card_data`
+(§5.9). The value is replaced with `[REDACTED]`, the field itself stays, so the
+log is still useful. Matching is a case-insensitive substring test on the key
+name (and on the `key` of a `{"key": …, "value": …}` pair), driven by
+`config('basata.logging.redact')`:
+
+```php
+// config/basata.php
+'logging' => [
+    'redact' => ['pin', 'card', 'voucher', 'serial', 'secret', 'password', 'expiry', 'account_number'],
+],
+```
+
+Add your service's own parameter names to that list; remove an entry to
+un-redact it.
 
 ### Caching
 

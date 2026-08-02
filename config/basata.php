@@ -70,6 +70,28 @@ return [
     'logging' => [
         'enabled' => env('BASATA_LOG_ENABLED', false),
         'channel' => env('BASATA_LOG_CHANNEL', null), // null = default channel
+
+        /*
+        | Keys whose VALUES are masked in the request and response logs (and
+        | in the error payload handed back to the caller). Matching is a
+        | case-insensitive substring test against the key name, and against
+        | the `key` of a {"key": …, "value": …} pair — which is how the API
+        | carries voucher secrets: `details_list` returns the voucher PIN and
+        | expiry date (FAQ A10) and `input_parameter_list` carries `card_data`
+        | (5.9). The value is replaced, not dropped, so the log still shows
+        | what was sent and received. Add your own service's parameter names
+        | here; removing an entry un-redacts it.
+        */
+        'redact' => [
+            'pin',
+            'card',
+            'voucher',
+            'serial',
+            'secret',
+            'password',
+            'expiry',
+            'account_number',
+        ],
     ],
 
     /*
