@@ -240,6 +240,15 @@ $tx->transactionId; // int|string|null — the spec types transaction_id as a
 $tx->amount;        // ?float
 $tx->serviceCharge; // ?float
 $tx->totalAmount;   // ?float
+$tx->raw;           // the full `data` block
+// GetTransactionDetails / GetTransactionByExternalId nest the record under
+// `data.transaction_details` (a Transaction Detail, PDF 4.10) while
+// TransactionInquiry / TransactionPayment return their fields flat in `data`.
+// TransactionResult reads the nested record first and falls back to the flat
+// level, so both shapes populate the same DTO. A Transaction Detail carries no
+// transaction_id or service_charge, so those are null for the report actions —
+// read the rest of the detail (status, provider_name, details_list, …) off
+// `$tx->raw['transaction_details']`.
 
 $inquiry = Basata::transactionInquiryDto($data);  // TransactionResult
 $payment = Basata::transactionPaymentDto($data);  // TransactionResult

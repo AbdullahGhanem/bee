@@ -62,6 +62,51 @@ class DTOTest extends TestCase
         $this->assertEquals('Unknown error', $response->error);
     }
 
+    public function test_transaction_result_from_a_nested_transaction_details_response(): void
+    {
+        // PDF 5.11/5.12: GetTransactionDetails and GetTransactionByExternalId
+        // return the record as a Transaction Detail object (4.10) under
+        // `data.transaction_details` — not flat like 5.7/5.8.
+        $apiResponse = ApiResponse::fromSuccess([
+            'data' => [
+                'transaction_details' => [
+                    'provider_name' => 'Orange',
+                    'service_name' => 'Orange Bills',
+                    'customer_number' => '01000000000',
+                    'amount' => 100.5,
+                    'total_amount' => 105.5,
+                    'status' => 'SUCCESS',
+                    'status_text' => 'Success',
+                ],
+            ],
+        ]);
+
+        $result = TransactionResult::fromApiResponse($apiResponse);
+
+        $this->assertTrue($result->success);
+        $this->assertEquals(100.5, $result->amount);
+        $this->assertEquals(105.5, $result->totalAmount);
+        // 4.10 carries no transaction_id/service_charge — null, not invented.
+        $this->assertNull($result->transactionId);
+        $this->assertNull($result->serviceCharge);
+    }
+
+    public function test_transaction_result_prefers_the_nested_record_over_the_flat_level(): void
+    {
+        $apiResponse = ApiResponse::fromSuccess([
+            'data' => [
+                'transaction_id' => '0225615364271',
+                'amount' => 1,
+                'transaction_details' => ['amount' => 100.5],
+            ],
+        ]);
+
+        $result = TransactionResult::fromApiResponse($apiResponse);
+
+        $this->assertEquals(100.5, $result->amount);
+        $this->assertSame('0225615364271', $result->transactionId);
+    }
+
     public function test_transaction_result_from_api_response(): void
     {
         $apiResponse = ApiResponse::fromSuccess([

@@ -50,10 +50,21 @@ class DtoIntegrationTest extends TestCase
 
     public function test_get_transaction_dto(): void
     {
+        // PDF 5.11: the response nests a Transaction Detail (4.10) under
+        // `data.transaction_details`. A flat `data.transaction_id` fixture is
+        // a shape this action never sends.
         Http::fake([
             'https://api.basata.test/report' => Http::response([
                 'success' => true,
-                'data' => ['transaction_id' => 123, 'amount' => 50],
+                'data' => [
+                    'transaction_details' => [
+                        'provider_name' => 'Orange',
+                        'service_name' => 'Orange Bills',
+                        'amount' => 50,
+                        'total_amount' => 55,
+                        'status' => 'SUCCESS',
+                    ],
+                ],
             ], 200),
         ]);
 
@@ -61,22 +72,35 @@ class DtoIntegrationTest extends TestCase
 
         $this->assertInstanceOf(TransactionResult::class, $result);
         $this->assertTrue($result->success);
-        $this->assertEquals(123, $result->transactionId);
         $this->assertEquals(50.0, $result->amount);
+        $this->assertEquals(55.0, $result->totalAmount);
+        $this->assertEquals('SUCCESS', $result->raw['transaction_details']['status']);
     }
 
-    public function test_get_transaction_dto_keeps_a_string_transaction_id_verbatim(): void
+    public function test_transaction_dto_keeps_a_string_transaction_id_verbatim(): void
     {
         // The spec types transaction_id as a String (FAQ Q17's sample is
-        // "225615364271"); coercing to int mangles leading zeros.
+        // "225615364271"); coercing to int mangles leading zeros. 5.8 is the
+        // action that actually returns one, flat in `data`.
         Http::fake([
-            'https://api.basata.test/report' => Http::response([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => ['service_version' => 3],
+            ], 200),
+            'https://api.basata.test/transaction' => Http::response([
                 'success' => true,
                 'data' => ['transaction_id' => '0225615364271', 'amount' => 50],
             ], 200),
         ]);
 
-        $result = Basata::getTransactionDto('0225615364271');
+        $result = Basata::transactionPaymentDto([
+            'account_number' => '123',
+            'service_id' => 10,
+            'external_id' => 'ext-1',
+            'amount' => 50,
+            'total_amount' => 55,
+            'quantity' => 1,
+        ]);
 
         $this->assertSame('0225615364271', $result->transactionId);
         $this->assertSame('0225615364271', $result->toArray()['transaction_id']);
