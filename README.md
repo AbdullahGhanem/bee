@@ -159,6 +159,19 @@ $result = Basata::calculateServiceChargeReverse([
 // Returns: ['service_id' => 10, 'amount' => 95.45, 'service_charge' => 9.55, 'total_amount' => 105]
 ```
 
+Both are client-side calculations over the service's `service_charge_list`
+(from the cached `getServiceList()`), and both fail loudly rather than
+guessing:
+
+- an unknown `service_id` throws `BasataNotFoundException` (code 1018);
+- an amount outside every charge band throws `BasataValidationException`
+  (code 1022) instead of returning a zero charge that would then be posted.
+
+`calculateServiceChargeReverse()` honours the band's `percentage` flag: a
+percentage charge is extracted out of the total, a fixed charge is subtracted
+from it. The band itself is matched on the resulting *net* amount, and
+`total_amount` always round-trips back to the total you passed in.
+
 ### All actions at a glance
 
 | Method | Maps to API action |
@@ -209,7 +222,8 @@ $response->get('categories.0.name'); // dot notation access
 
 // Transaction DTO
 $tx = Basata::getTransactionDto(123); // returns TransactionResult
-$tx->transactionId; // ?int
+$tx->transactionId; // int|string|null — the spec types transaction_id as a
+                    // String, so it is passed through verbatim (never cast)
 $tx->amount;        // ?float
 $tx->serviceCharge; // ?float
 $tx->totalAmount;   // ?float

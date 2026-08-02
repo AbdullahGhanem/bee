@@ -361,36 +361,76 @@ class ApiClient
 
     public function calculateServiceCharge(array $data): array
     {
-        $serviceList = $this->getServiceList()['data'] ?? [];
-        $service = collect($serviceList['service_list'])->where('id', $data['service_id'])->first();
-        $chargeObject = $this->getServiceChargeObject($service['service_charge_list'], $data['amount']);
+        $chargeList = $this->serviceChargeList($data['service_id']);
+        $amount = (float) $data['amount'];
+        $band = $this->getServiceChargeObject($chargeList, $amount);
 
-        $data['service_charge'] = $chargeObject['percentage']
-            ? $data['amount'] * $chargeObject['charge'] / 100
-            : $chargeObject['charge'];
-        $data['service_charge'] = max($data['service_charge'], $chargeObject['slap']);
+        $data['service_charge'] = $this->chargeForAmount($band, $amount);
+        $data['total_amount'] = $amount + $data['service_charge'];
+
+        return $data;
+    }
+
+    /**
+     * The inverse of calculateServiceCharge(): `amount` comes in as the total
+     * the customer should pay, and the net amount + charge are derived from
+     * it. A fixed (percentage = false) charge is an absolute amount, so it is
+     * subtracted — dividing by (1 + charge/100) treated e.g. a flat 10 as
+     * "10%" and returned a total that no longer matched what was asked for.
+     * The band is matched on the *net* amount (what the forward calculation
+     * would be given), not on the total.
+     */
+    public function calculateServiceChargeReverse(array $data): array
+    {
+        $chargeList = $this->serviceChargeList($data['service_id']);
+        $total = (float) $data['amount'];
+
+        $band = $this->requireChargeBand(collect($chargeList)->first(function ($band) use ($total) {
+            $net = $total - $this->chargeForTotal($band, $total);
+
+            return $net >= $band['from'] && $net <= $band['to'];
+        }));
+
+        $data['service_charge'] = $this->chargeForTotal($band, $total);
+        $data['amount'] = round($total - $data['service_charge'], 2);
+        // Round-trips by construction: the caller asked for this total and
+        // gets it back, whatever the rounding did to the two components.
         $data['total_amount'] = $data['amount'] + $data['service_charge'];
 
         return $data;
     }
 
-    public function calculateServiceChargeReverse(array $data): array
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function serviceChargeList(int|string $serviceId): array
     {
-        $serviceList = $this->getServiceList()['data'] ?? [];
-        $service = collect($serviceList['service_list'])->where('id', $data['service_id'])->first();
-        $chargeObject = $this->getServiceChargeObject($service['service_charge_list'], $data['amount']);
+        $service = collect($this->getServiceList()['data']['service_list'] ?? [])
+            ->firstWhere('id', $serviceId);
 
-        $data['total_amount'] = $data['amount'];
-        $data['amount'] = round($data['total_amount'] / (1 + $chargeObject['charge'] / 100), 2);
-        $data['service_charge'] = bcdiv(
-            $chargeObject['percentage'] ? $data['amount'] * $chargeObject['charge'] / 100 : $chargeObject['charge'],
-            1,
-            2
-        );
-        $data['service_charge'] = max((float) $data['service_charge'], $chargeObject['slap']);
-        $data['total_amount'] = $data['amount'] + $data['service_charge'];
+        if ($service === null) {
+            throw BasataException::fromCode(ErrorCode::UnknownService->value);
+        }
 
-        return $data;
+        return $service['service_charge_list'] ?? [];
+    }
+
+    /** Forward: charge on a known net amount. */
+    protected function chargeForAmount(array $band, float $amount): float
+    {
+        $charge = $band['percentage'] ? $amount * $band['charge'] / 100 : (float) $band['charge'];
+
+        return max(round($charge, 2), (float) ($band['slap'] ?? 0));
+    }
+
+    /** Reverse: charge contained in a known total. */
+    protected function chargeForTotal(array $band, float $total): float
+    {
+        $charge = $band['percentage']
+            ? $total - $total / (1 + $band['charge'] / 100)
+            : (float) $band['charge'];
+
+        return max(round($charge, 2), (float) ($band['slap'] ?? 0));
     }
 
     public function getBillsAmount(array $data): array
@@ -425,12 +465,26 @@ class ApiClient
         }
     }
 
-    protected function getServiceChargeObject(array $chargeList, float $amount): ?array
+    protected function getServiceChargeObject(array $chargeList, float $amount): array
     {
-        return collect($chargeList)
-            ->where('from', '<=', $amount)
-            ->where('to', '>=', $amount)
-            ->first();
+        return $this->requireChargeBand(
+            collect($chargeList)->first(fn ($band) => $amount >= $band['from'] && $amount <= $band['to'])
+        );
+    }
+
+    /**
+     * An amount outside every band used to yield service_charge = null and
+     * total_amount = amount — a silently zero charge that then got posted and
+     * came back as error 1022 "Wrong service charge" at best, or as an
+     * under-charged payment at worst. Fail here instead.
+     */
+    protected function requireChargeBand(?array $band): array
+    {
+        if ($band === null) {
+            throw BasataException::fromCode(ErrorCode::WrongServiceCharge->value);
+        }
+
+        return $band;
     }
 
     protected function cached(string $key, callable $callback): Collection|array

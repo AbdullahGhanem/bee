@@ -4,6 +4,7 @@ namespace Ghanem\Basata\Tests\Unit;
 
 use Ghanem\Basata\ApiClient;
 use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataNotFoundException;
 use Ghanem\Basata\Exceptions\BasataServerException;
 use Ghanem\Basata\Exceptions\BasataValidationException;
 use Ghanem\Basata\Tests\TestCase;
@@ -463,6 +464,112 @@ class ApiClientTest extends TestCase
         $this->assertEquals(100.0, $result['amount']);
         $this->assertEqualsWithDelta(10.0, $result['service_charge'], 0.01);
         $this->assertEqualsWithDelta(110.0, $result['total_amount'], 0.01);
+    }
+
+    public function test_calculate_service_charge_reverse_with_a_fixed_charge(): void
+    {
+        // A fixed charge is an absolute amount, not a percentage: dividing the
+        // total by (1 + 10/100) used to return total_amount 191.82 for a
+        // requested total of 200.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => [
+                    'service_list' => [
+                        [
+                            'id' => 10,
+                            'service_charge_list' => [
+                                ['from' => 0, 'to' => 1000, 'charge' => 10, 'percentage' => false, 'slap' => 0],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $result = $this->client->calculateServiceChargeReverse([
+            'service_id' => 10,
+            'amount' => 200, // total amount including charge
+        ]);
+
+        $this->assertEquals(190.0, $result['amount']);
+        $this->assertEquals(10.0, $result['service_charge']);
+        $this->assertEquals(200.0, $result['total_amount']);
+    }
+
+    public function test_calculate_service_charge_reverse_matches_the_band_on_the_net_amount(): void
+    {
+        // Total 205 with a fixed charge of 10 nets 195 — the 0-200 band, not
+        // the 201-1000 one the total alone would have selected.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => [
+                    'service_list' => [
+                        [
+                            'id' => 10,
+                            'service_charge_list' => [
+                                ['from' => 0, 'to' => 200, 'charge' => 10, 'percentage' => false, 'slap' => 0],
+                                ['from' => 201, 'to' => 1000, 'charge' => 50, 'percentage' => false, 'slap' => 0],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $result = $this->client->calculateServiceChargeReverse([
+            'service_id' => 10,
+            'amount' => 205,
+        ]);
+
+        $this->assertEquals(10.0, $result['service_charge']);
+        $this->assertEquals(195.0, $result['amount']);
+        $this->assertEquals(205.0, $result['total_amount']);
+    }
+
+    public function test_calculate_service_charge_throws_when_the_amount_matches_no_band(): void
+    {
+        // Used to produce service_charge = null / total_amount = amount — a
+        // silently zero charge that then got posted.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => [
+                    'service_list' => [
+                        [
+                            'id' => 10,
+                            'service_charge_list' => [
+                                ['from' => 0, 'to' => 100, 'charge' => 5, 'percentage' => false, 'slap' => 0],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $this->expectException(BasataValidationException::class);
+        $this->expectExceptionCode(1022);
+
+        $this->client->calculateServiceCharge([
+            'service_id' => 10,
+            'amount' => 5000,
+        ]);
+    }
+
+    public function test_calculate_service_charge_throws_for_an_unknown_service(): void
+    {
+        Http::fake([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => ['service_list' => [['id' => 10, 'service_charge_list' => []]]],
+            ], 200),
+        ]);
+
+        $this->expectException(BasataNotFoundException::class);
+        $this->expectExceptionCode(1018);
+
+        $this->client->calculateServiceCharge(['service_id' => 99, 'amount' => 100]);
     }
 
     public function test_get_bills_amount(): void

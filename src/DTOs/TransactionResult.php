@@ -6,7 +6,11 @@ class TransactionResult
 {
     public function __construct(
         public readonly bool $success,
-        public readonly ?int $transactionId,
+        // The spec types transaction_id as a String everywhere (4.9, 4.10,
+        // 5.7, 5.8, 5.11; FAQ Q17's sample is "225615364271"). Coercing to int
+        // dropped leading zeros and TypeError'd on a non-numeric ID, so the
+        // value is passed through exactly as the API sent it.
+        public readonly int|string|null $transactionId,
         public readonly ?float $amount,
         public readonly ?float $serviceCharge,
         public readonly ?float $totalAmount,

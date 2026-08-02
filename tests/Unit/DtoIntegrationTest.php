@@ -65,6 +65,23 @@ class DtoIntegrationTest extends TestCase
         $this->assertEquals(50.0, $result->amount);
     }
 
+    public function test_get_transaction_dto_keeps_a_string_transaction_id_verbatim(): void
+    {
+        // The spec types transaction_id as a String (FAQ Q17's sample is
+        // "225615364271"); coercing to int mangles leading zeros.
+        Http::fake([
+            'https://api.basata.test/report' => Http::response([
+                'success' => true,
+                'data' => ['transaction_id' => '0225615364271', 'amount' => 50],
+            ], 200),
+        ]);
+
+        $result = Basata::getTransactionDto('0225615364271');
+
+        $this->assertSame('0225615364271', $result->transactionId);
+        $this->assertSame('0225615364271', $result->toArray()['transaction_id']);
+    }
+
     public function test_get_transaction_dto_with_error(): void
     {
         // The DTO error shape only exists when throwing is disabled — a
