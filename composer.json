@@ -2,7 +2,13 @@
     "name": "ghanem/basata",
     "type": "library",
     "description": "A Laravel package that provides an interface to the Basata payment services API.",
-    "keywords": ["Laravel", "PHP", "Basata", "API", "Payment"],
+    "keywords": [
+        "Laravel",
+        "PHP",
+        "Basata",
+        "API",
+        "Payment"
+    ],
     "homepage": "https://github.com/gaitco/basata",
     "license": "MIT",
     "authors": [
@@ -18,6 +24,7 @@
         "illuminate/http": "^10.0|^11.0|^12.0|^13.0"
     },
     "require-dev": {
+        "guzzlehttp/guzzle": "^7.5",
         "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
         "phpunit/phpunit": "^10.5|^11.0|^12.0"
     },
