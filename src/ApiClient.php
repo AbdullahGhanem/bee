@@ -3,6 +3,8 @@
 namespace Ghanem\Bee;
 
 use Ghanem\Bee\DTOs\ApiResponse;
+use Ghanem\Bee\Enums\ErrorCode;
+use Ghanem\Bee\Exceptions\BeeException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -14,7 +16,11 @@ class ApiClient
     public function request(string $endpoint, array $params = []): Collection|array
     {
         if ($this->isRateLimited()) {
-            return ['error' => 'Rate limit exceeded', 'status_code' => 429];
+            return $this->handleFailure(ErrorCode::RateLimitExceeded->value, [
+                'success' => false,
+                'code' => ErrorCode::RateLimitExceeded->value,
+                'message' => ErrorCode::RateLimitExceeded->message(),
+            ]);
         }
 
         $params['login'] = config('bee.username');
@@ -38,8 +44,15 @@ class ApiClient
         $this->hitRateLimiter();
 
         if ($response->ok()) {
-            $data = $response->json();
-            $this->logResponse($endpoint, $data, $response->status());
+            $data = $response->json() ?? [];
+            $code = $this->extractApiCode($data);
+            $isBusinessFailure = ($data['success'] ?? null) === false || $code !== null;
+
+            $this->logResponse($endpoint, $data, $response->status(), $isBusinessFailure);
+
+            if ($isBusinessFailure) {
+                return $this->handleFailure($code, $data);
+            }
 
             return collect($data);
         }
@@ -55,6 +68,52 @@ class ApiClient
         return $errorData;
     }
 
+    /**
+     * The API returns HTTP 200 even for business failures (insufficient
+     * balance, transaction in progress, etc). The error code can show up
+     * under different keys depending on the failure path, so every
+     * plausible field is checked. The PDF's only full JSON sample (FAQ
+     * Q17, page 21) is a success response and carries none of these keys.
+     */
+    protected function extractApiCode(array $data): ?int
+    {
+        foreach (['code', 'error_code', 'status_code'] as $key) {
+            if (isset($data[$key]) && is_numeric($data[$key])) {
+                return (int) $data[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function handleFailure(?int $code, array $payload): array
+    {
+        if (config('bee.errors.throw', true)) {
+            throw BeeException::fromCode($code, $payload);
+        }
+
+        return $payload;
+    }
+
+    protected function resolveTerminalId(?string $terminalId): string
+    {
+        $terminalId ??= config('bee.terminal_id');
+
+        if (empty($terminalId)) {
+            throw BeeException::fromCode(ErrorCode::TerminalIdRequired->value);
+        }
+
+        return $terminalId;
+    }
+
+    protected function resolveLanguage(?string $lang): string
+    {
+        return $lang ?? config('bee.language', 'en');
+    }
+
     public function requestDto(string $endpoint, array $params = []): ApiResponse
     {
         $result = $this->request($endpoint, $params);
@@ -66,22 +125,24 @@ class ApiClient
         return ApiResponse::fromError($result, $result['status_code'] ?? 500);
     }
 
-    public function getProviderList(int $categoryId = 2, string $lang = 'en'): Collection|array
+    public function getProviderList(int $categoryId = 2, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('service', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->resolveTerminalId($terminalId),
             'action' => 'GetProviderList',
             'version' => 2,
-            'language' => $lang,
+            'language' => $this->resolveLanguage($lang),
             'data' => ['service_version' => 0],
         ]);
     }
 
-    public function getServiceList(string $lang = 'en'): Collection|array
+    public function getServiceList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->cached("service_list_{$lang}", function () use ($lang) {
+        $lang = $this->resolveLanguage($lang);
+
+        return $this->cached("service_list_{$lang}", function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => '1',
+                'terminal_id' => $this->resolveTerminalId($terminalId),
                 'action' => 'GetServiceList',
                 'version' => 2,
                 'language' => $lang,
@@ -90,11 +151,13 @@ class ApiClient
         });
     }
 
-    public function getServiceInputParameterList(string $lang = 'en'): Collection|array
+    public function getServiceInputParameterList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->cached("service_input_params_{$lang}", function () use ($lang) {
+        $lang = $this->resolveLanguage($lang);
+
+        return $this->cached("service_input_params_{$lang}", function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => '1',
+                'terminal_id' => $this->resolveTerminalId($terminalId),
                 'action' => 'GetServiceInputParameterList',
                 'version' => 2,
                 'language' => $lang,
@@ -103,11 +166,13 @@ class ApiClient
         });
     }
 
-    public function getServiceOutputParameterList(string $lang = 'en'): Collection|array
+    public function getServiceOutputParameterList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->cached("service_output_params_{$lang}", function () use ($lang) {
+        $lang = $this->resolveLanguage($lang);
+
+        return $this->cached("service_output_params_{$lang}", function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => '1',
+                'terminal_id' => $this->resolveTerminalId($terminalId),
                 'action' => 'GetServiceOutputParameterList',
                 'version' => 2,
                 'language' => $lang,
@@ -116,11 +181,13 @@ class ApiClient
         });
     }
 
-    public function getCategoryList(string $lang = 'en'): Collection|array
+    public function getCategoryList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->cached("category_list_{$lang}", function () use ($lang) {
+        $lang = $this->resolveLanguage($lang);
+
+        return $this->cached("category_list_{$lang}", function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => '1',
+                'terminal_id' => $this->resolveTerminalId($terminalId),
                 'action' => 'GetCategoryList',
                 'version' => 2,
                 'language' => $lang,
@@ -129,11 +196,13 @@ class ApiClient
         });
     }
 
-    public function getCategoryServiceList(string $lang = 'en'): Collection|array
+    public function getCategoryServiceList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->cached("category_service_list_{$lang}", function () use ($lang) {
+        $lang = $this->resolveLanguage($lang);
+
+        return $this->cached("category_service_list_{$lang}", function () use ($lang, $terminalId) {
             return $this->request('service', [
-                'terminal_id' => '1',
+                'terminal_id' => $this->resolveTerminalId($terminalId),
                 'action' => 'GetCategoryServiceList',
                 'version' => 2,
                 'language' => $lang,
@@ -142,38 +211,38 @@ class ApiClient
         });
     }
 
-    public function getTransaction(int|string $id, string $type = 'id', string $lang = 'en'): Collection|array
+    public function getTransaction(int|string $id, string $type = 'id', ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         $action = $type === 'external_id' ? 'GetTransactionByExternalId' : 'GetTransactionDetails';
         $dataKey = $type === 'external_id' ? 'external_id' : 'transaction_id';
 
         return $this->request('report', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->resolveTerminalId($terminalId),
             'action' => $action,
             'version' => 2,
-            'language' => $lang,
+            'language' => $this->resolveLanguage($lang),
             'data' => [$dataKey => $id],
         ]);
     }
 
-    public function getAccountInfo(string $lang = 'en'): Collection|array
+    public function getAccountInfo(?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('report', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->resolveTerminalId($terminalId),
             'action' => 'GetAccountInfo',
             'version' => 2,
-            'language' => $lang,
+            'language' => $this->resolveLanguage($lang),
             'data' => ['s' => 'd'],
         ]);
     }
 
-    public function transactionInquiry(array $data, string $lang = 'en'): Collection|array
+    public function transactionInquiry(array $data, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('transaction', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->resolveTerminalId($terminalId),
             'action' => 'TransactionInquiry',
             'version' => 2,
-            'language' => $lang,
+            'language' => $this->resolveLanguage($lang),
             'data' => [
                 'service_version' => $data['service_version'] ?? 2,
                 'account_number' => $data['account_number'] ?? 2,
@@ -183,13 +252,13 @@ class ApiClient
         ]);
     }
 
-    public function transactionPayment(array $data, string $lang = 'en'): Collection|array
+    public function transactionPayment(array $data, ?string $lang = null, ?string $terminalId = null): Collection|array
     {
         return $this->request('transaction', [
-            'terminal_id' => '1',
+            'terminal_id' => $this->resolveTerminalId($terminalId),
             'action' => 'TransactionPayment',
             'version' => 2,
-            'language' => $lang,
+            'language' => $this->resolveLanguage($lang),
             'data' => [
                 'service_version' => $data['service_version'] ?? 2,
                 'account_number' => $data['account_number'] ?? 2,

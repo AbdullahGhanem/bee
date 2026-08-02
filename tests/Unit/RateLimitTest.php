@@ -3,6 +3,7 @@
 namespace Ghanem\Bee\Tests\Unit;
 
 use Ghanem\Bee\ApiClient;
+use Ghanem\Bee\Exceptions\BeeRateLimitException;
 use Ghanem\Bee\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,6 +35,9 @@ class RateLimitTest extends TestCase
 
     public function test_blocks_requests_over_limit(): void
     {
+        // Regression guard: rate limiting is a business failure like any
+        // other API error code, so by default (bee.errors.throw = true) it
+        // must throw rather than hand back a "success-shaped" array.
         Http::fake([
             'https://api.bee.test/service' => Http::response(['success' => true], 200),
         ]);
@@ -46,11 +50,33 @@ class RateLimitTest extends TestCase
         }
 
         // Next request should be rate limited
+        try {
+            $client->request('service', ['action' => 'Test']);
+            $this->fail('Expected BeeRateLimitException');
+        } catch (BeeRateLimitException $e) {
+            $this->assertSame(1033, $e->apiCode);
+        }
+    }
+
+    public function test_blocks_requests_over_limit_without_throwing_when_disabled(): void
+    {
+        $this->app['config']->set('bee.errors.throw', false);
+
+        Http::fake([
+            'https://api.bee.test/service' => Http::response(['success' => true], 200),
+        ]);
+
+        $client = new ApiClient();
+
+        for ($i = 0; $i < 3; $i++) {
+            $client->request('service', ['action' => 'Test']);
+        }
+
         $result = $client->request('service', ['action' => 'Test']);
 
         $this->assertIsArray($result);
-        $this->assertEquals(429, $result['status_code']);
-        $this->assertEquals('Rate limit exceeded', $result['error']);
+        $this->assertFalse($result['success']);
+        $this->assertSame(1033, $result['code']);
     }
 
     public function test_rate_limit_does_not_apply_when_disabled(): void

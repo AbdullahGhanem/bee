@@ -15,6 +15,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Terminal & Language
+    |--------------------------------------------------------------------------
+    |
+    | The API requires a unique External Terminal ID per terminal (PDF FAQ
+    | Q3, page 19) and a "language" on every request (missing it is API
+    | error 1011).
+    |
+    */
+
+    'terminal_id' => env('BEE_TERMINAL_ID', ''),
+
+    'language' => env('BEE_LANGUAGE', 'en'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Error Handling
+    |--------------------------------------------------------------------------
+    |
+    | The API returns HTTP 200 for business failures, so success is read
+    | from the response body. Set false to receive the raw payload instead
+    | of a thrown exception.
+    |
+    */
+
+    'errors' => [
+        'throw' => env('BEE_ERRORS_THROW', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Retry Configuration
     |--------------------------------------------------------------------------
     |

@@ -26,5 +26,6 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('bee.username', 'test-user');
         $app['config']->set('bee.password', 'test-pass');
         $app['config']->set('bee.url', 'https://api.bee.test/');
+        $app['config']->set('bee.terminal_id', 'TEST-TERMINAL');
     }
 }
