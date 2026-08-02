@@ -115,7 +115,14 @@ class AsyncTest extends TestCase
         ]);
 
         $job = new ProcessTransactionPaymentJob(
-            data: ['service_id' => 10, 'amount' => 100],
+            data: [
+                'account_number' => '12345',
+                'service_id' => 10,
+                'external_id' => 'ext-1',
+                'amount' => 100,
+                'total_amount' => 100,
+                'quantity' => 1,
+            ],
             lang: 'en',
         );
 

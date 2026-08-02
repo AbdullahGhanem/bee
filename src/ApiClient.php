@@ -133,6 +133,27 @@ class ApiClient
         return $lang ?? config('bee.language', 'en');
     }
 
+    /**
+     * Fails fast on a missing required (+) field instead of silently
+     * substituting a placeholder default. `transactionInquiry()` and
+     * `transactionPayment()` used to default e.g. `amount` to 1.5 and
+     * `service_id` to 14 when the caller forgot them — meaning a forgotten
+     * `amount` silently posted a real 1.5 EGP payment against service 14
+     * instead of failing. "0" is not empty here for the same reason it isn't
+     * in resolveTerminalId(): it can be a legitimate value (e.g.
+     * service_version 0 on first use).
+     */
+    protected function requireField(array $data, string $key, ErrorCode $code): mixed
+    {
+        $value = $data[$key] ?? null;
+
+        if ($value === null || $value === '') {
+            throw BeeException::fromCode($code->value);
+        }
+
+        return $value;
+    }
+
     public function requestDto(string $endpoint, array $params = []): ApiResponse
     {
         $result = $this->request($endpoint, $params);
@@ -258,10 +279,12 @@ class ApiClient
             'action' => 'TransactionInquiry',
             'version' => 2,
             'language' => $lang,
+            // PDF 5.7 (p.13): service_version, account_number and service_id
+            // are all required (+) — no client-side defaults for them.
             'data' => [
-                'service_version' => $data['service_version'] ?? 2,
-                'account_number' => $data['account_number'] ?? 2,
-                'service_id' => $data['service_id'] ?? 14,
+                'service_version' => $this->requireField($data, 'service_version', ErrorCode::DataRequired),
+                'account_number' => $this->requireField($data, 'account_number', ErrorCode::DataRequired),
+                'service_id' => $this->requireField($data, 'service_id', ErrorCode::DataRequired),
                 'input_parameter_list' => $data['input_parameter_list'] ?? [],
             ],
         ]);
@@ -274,21 +297,38 @@ class ApiClient
             'action' => 'TransactionPayment',
             'version' => 2,
             'language' => $lang,
+            // PDF 5.8 (p.14): external_id, service_version, account_number,
+            // service_id, amount, total_amount and quantity are all required
+            // (+) — no client-side defaults for them. amount/total_amount use
+            // WrongAmount (1017); the rest use DataRequired (1008) — neither
+            // field has a more specific documented code.
             'data' => [
-                'service_version' => $data['service_version'] ?? 2,
-                'account_number' => $data['account_number'] ?? 2,
-                'service_id' => $data['service_id'] ?? 14,
-                'external_id' => $data['external_id'] ?? '14',
-                'amount' => $data['amount'] ?? 1.5,
-                // PDF 5.8 (p.14): service_charge is NOT a request field — only
-                // external_id, service_version, account_number, service_id,
-                // inquiry_transaction_id, amount, total_amount, quantity and
-                // input_parameter_list are. total_amount already carries the
-                // charge; sending an undocumented service_charge key was a
-                // contract mismatch.
-                'total_amount' => $data['total_amount'] ?? 1.5,
-                'quantity' => $data['quantity'] ?? 1,
-                'inquiry_transaction_id' => $data['inquiry_transaction_id'] ?? 2,
+                'service_version' => $this->requireField($data, 'service_version', ErrorCode::DataRequired),
+                'account_number' => $this->requireField($data, 'account_number', ErrorCode::DataRequired),
+                'service_id' => $this->requireField($data, 'service_id', ErrorCode::DataRequired),
+                'external_id' => $this->requireField($data, 'external_id', ErrorCode::DataRequired),
+                'amount' => $this->requireField($data, 'amount', ErrorCode::WrongAmount),
+                // PDF FAQ A6 (p.19): "the client sends the request to Bee
+                // including the amount, the calculated service charge, and
+                // the total amount of the transaction" — an affirmative
+                // statement that service_charge is a real request field, and
+                // error 1022 "Wrong service charge" (p.18) only makes sense
+                // if the server validates a client-submitted value. §5.8's
+                // table omitting it is an absence, not a prohibition — that
+                // table also omits `language`, which every sample sends and
+                // error 1011 requires. Do not remove this again on the
+                // "not in the table" reasoning; the table is demonstrably
+                // incomplete elsewhere.
+                'service_charge' => $data['service_charge'] ?? 0,
+                'total_amount' => $this->requireField($data, 'total_amount', ErrorCode::WrongAmount),
+                'quantity' => $this->requireField($data, 'quantity', ErrorCode::DataRequired),
+                // Documented +/- ("Required if service's inquiry_required=
+                // true") — genuinely optional, unlike the fields above, so
+                // it's omitted rather than forced or defaulted to a magic
+                // placeholder when the caller doesn't supply it.
+                ...(($data['inquiry_transaction_id'] ?? '') !== ''
+                    ? ['inquiry_transaction_id' => $data['inquiry_transaction_id']]
+                    : []),
                 'input_parameter_list' => $data['input_parameter_list'] ?? [],
             ],
         ]);

@@ -128,7 +128,10 @@ class BeeServiceTest extends TestCase
         $result = Bee::transactionPayment([
             'account_number' => '123',
             'service_id' => 10,
+            'external_id' => 'ext-1',
             'amount' => 100,
+            'total_amount' => 100,
+            'quantity' => 1,
         ]);
 
         $this->assertInstanceOf(Collection::class, $result);
@@ -200,6 +203,7 @@ class BeeServiceTest extends TestCase
         ]);
 
         $result = Bee::getBillsAmount([
+            'service_version' => 3,
             'service_id' => 10,
             'account_number' => '123',
         ]);

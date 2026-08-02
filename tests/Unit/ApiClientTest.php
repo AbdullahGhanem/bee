@@ -3,6 +3,7 @@
 namespace Ghanem\Bee\Tests\Unit;
 
 use Ghanem\Bee\ApiClient;
+use Ghanem\Bee\Exceptions\BeeValidationException;
 use Ghanem\Bee\Tests\TestCase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -227,22 +228,17 @@ class ApiClientTest extends TestCase
         });
     }
 
-    public function test_transaction_inquiry_uses_defaults(): void
+    public function test_transaction_inquiry_throws_instead_of_defaulting_missing_required_fields(): void
     {
-        Http::fake([
-            'https://api.bee.test/transaction' => Http::response(['success' => true, 'data' => []], 200),
-        ]);
+        // PDF 5.7 (p.13): service_version, account_number and service_id are
+        // all required (+). Silently defaulting them (the old behavior) can
+        // route a real inquiry against the wrong service. See
+        // RequiredFieldsTest for per-field coverage of the exact codes.
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        $this->expectException(BeeValidationException::class);
 
         $this->client->transactionInquiry([]);
-
-        Http::assertSent(function ($r) {
-            $data = $r->data()['data'];
-
-            return $data['service_version'] === 2
-                && $data['account_number'] === 2
-                && $data['service_id'] === 14
-                && $data['input_parameter_list'] === [];
-        });
     }
 
     public function test_transaction_payment(): void
@@ -273,28 +269,44 @@ class ApiClientTest extends TestCase
 
             return $data['action'] === 'TransactionPayment'
                 && $data['data']['amount'] === 100
+                && $data['data']['service_charge'] === 5
                 && $data['data']['total_amount'] === 105;
         });
     }
 
-    public function test_transaction_payment_uses_defaults(): void
+    public function test_transaction_payment_sends_zero_service_charge_when_not_supplied(): void
     {
-        Http::fake([
-            'https://api.bee.test/transaction' => Http::response(['success' => true, 'data' => []], 200),
+        // service_charge is real (PDF FAQ A6 p.19, error 1022 p.18) but
+        // genuinely optional client-side (calculateServiceCharge() computes
+        // it) — 0 is the sane default, unlike the required fields below.
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        $this->client->transactionPayment([
+            'service_version' => 3,
+            'account_number' => '12345',
+            'service_id' => 10,
+            'external_id' => 'ext-1',
+            'amount' => 100,
+            'total_amount' => 100,
+            'quantity' => 1,
         ]);
 
+        Http::assertSent(fn ($r) => $r->data()['data']['service_charge'] === 0);
+    }
+
+    public function test_transaction_payment_throws_instead_of_defaulting_missing_required_fields(): void
+    {
+        // PDF 5.8 (p.14): external_id, service_version, account_number,
+        // service_id, amount, total_amount and quantity are all required
+        // (+). Silently defaulting them (the old behavior — amount => 1.5,
+        // service_id => 14, etc.) could post a real payment with the wrong
+        // amount against the wrong service. See RequiredFieldsTest for
+        // per-field coverage of the exact codes.
+        Http::fake(['*' => Http::response(['success' => true, 'data' => []], 200)]);
+
+        $this->expectException(BeeValidationException::class);
+
         $this->client->transactionPayment([]);
-
-        Http::assertSent(function ($r) {
-            $data = $r->data()['data'];
-
-            // PDF 5.8 (p.14): service_charge is not a TransactionPayment
-            // request field, so it must never be sent on the wire.
-            return $data['amount'] === 1.5
-                && ! array_key_exists('service_charge', $data)
-                && $data['total_amount'] === 1.5
-                && $data['quantity'] === 1;
-        });
     }
 
     public function test_calculate_service_charge_with_percentage(): void
@@ -417,6 +429,7 @@ class ApiClientTest extends TestCase
         ]);
 
         $result = $this->client->getBillsAmount([
+            'service_version' => 3,
             'service_id' => 10,
             'account_number' => '12345',
         ]);

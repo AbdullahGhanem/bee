@@ -89,6 +89,11 @@ class ActionContractTest extends TestCase
                     'inquiry_transaction_id' => 50,
                     'service_id' => 10,
                     'amount' => 100,
+                    // Not passed in args -> ApiClient defaults it to 0. Real
+                    // callers compute this via calculateServiceCharge(); see
+                    // PDF FAQ A6 (p.19) / error 1022 for why it's sent at all
+                    // despite being absent from §5.8's table.
+                    'service_charge' => 0,
                     'total_amount' => 105,
                     'quantity' => 1,
                     'input_parameter_list' => [],
@@ -120,6 +125,14 @@ class ActionContractTest extends TestCase
             $expected = $expectedData;
             ksort($expected);
 
+            // (array) $request['data'] would pass even if the code regressed
+            // from an empty object back to an empty array (both cast to
+            // []), which is exactly the bug being pinned down — so for the
+            // empty-data actions, also check the literal wire bytes contain
+            // the PDF's "data":{} rather than "data":[].
+            $wireBytesOk = $expectedData !== []
+                || str_contains($request->body(), '"data":{}');
+
             return str_ends_with($request->url(), '/'.$path)
                 && $request['action'] === $action
                 && $request['version'] === 2
@@ -127,7 +140,8 @@ class ActionContractTest extends TestCase
                 && $request['terminal_id'] === '1234567890'
                 && array_key_exists('login', $request->data())
                 && array_key_exists('password', $request->data())
-                && $actualData === $expected;
+                && $actualData === $expected
+                && $wireBytesOk;
         });
     }
 }

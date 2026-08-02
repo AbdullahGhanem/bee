@@ -102,56 +102,40 @@ class BeeService
     // DTO methods (return typed DTOs)
     // -------------------------------------------------------------------------
 
+    /**
+     * DTO methods route through the same ApiClient action methods as the
+     * "standard" methods above (never hand-build a `data` payload here) —
+     * that duplication was fixed once already (ConfirmPrepaidCardRecharge
+     * task) and still slipped back in for GetCategoryList/GetServiceList via
+     * copy-paste. One choke point (`toApiResponse()` below plus the action
+     * methods on ApiClient) means a wire-contract fix can't miss this half
+     * of the class again.
+     */
     public function getCategoryListDto(?string $lang = null): ApiResponse
     {
-        return $this->client->requestDto('service', [
-            'action' => 'GetCategoryList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 1],
-        ]);
+        return $this->toApiResponse($this->client->getCategoryList($lang));
     }
 
     public function getServiceListDto(?string $lang = null): ApiResponse
     {
-        return $this->client->requestDto('service', [
-            'action' => 'GetServiceList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['s' => 'd'],
-        ]);
+        return $this->toApiResponse($this->client->getServiceList($lang));
     }
 
     public function getTransactionDto(int|string $id, string $type = 'id', ?string $lang = null): TransactionResult
     {
-        $response = $this->client->requestDto('report', [
-            'action' => $type === 'external_id' ? 'GetTransactionByExternalId' : 'GetTransactionDetails',
-            'version' => 2,
-            'language' => $lang,
-            'data' => [$type === 'external_id' ? 'external_id' : 'transaction_id' => $id],
-        ]);
-
-        return TransactionResult::fromApiResponse($response);
+        return TransactionResult::fromApiResponse(
+            $this->toApiResponse($this->client->getTransaction($id, $type, $lang))
+        );
     }
 
     public function transactionInquiryDto(array $data, ?string $lang = null): TransactionResult
     {
-        $result = $this->transactionInquiry($data, $lang);
-        $apiResponse = $result instanceof Collection
-            ? ApiResponse::fromSuccess($result->toArray())
-            : ApiResponse::fromError($result, $result['status_code'] ?? 500);
-
-        return TransactionResult::fromApiResponse($apiResponse);
+        return TransactionResult::fromApiResponse($this->toApiResponse($this->transactionInquiry($data, $lang)));
     }
 
     public function transactionPaymentDto(array $data, ?string $lang = null): TransactionResult
     {
-        $result = $this->transactionPayment($data, $lang);
-        $apiResponse = $result instanceof Collection
-            ? ApiResponse::fromSuccess($result->toArray())
-            : ApiResponse::fromError($result, $result['status_code'] ?? 500);
-
-        return TransactionResult::fromApiResponse($apiResponse);
+        return TransactionResult::fromApiResponse($this->toApiResponse($this->transactionPayment($data, $lang)));
     }
 
     public function calculateServiceChargeDto(array $data): ServiceChargeResult
@@ -202,5 +186,17 @@ class BeeService
     public function clearCache(?string $key = null): void
     {
         $this->client->clearCache($key);
+    }
+
+    /**
+     * Shared by every *Dto method: a Collection means the underlying
+     * ApiClient call succeeded, anything else (a plain array) is the
+     * error/transport-failure shape request() falls back to.
+     */
+    protected function toApiResponse(Collection|array $result): ApiResponse
+    {
+        return $result instanceof Collection
+            ? ApiResponse::fromSuccess($result->toArray())
+            : ApiResponse::fromError($result, $result['status_code'] ?? 500);
     }
 }

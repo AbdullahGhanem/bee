@@ -124,7 +124,10 @@ class DtoIntegrationTest extends TestCase
         $result = Bee::transactionPaymentDto([
             'account_number' => '123',
             'service_id' => 10,
+            'external_id' => 'ext-1',
             'amount' => 100,
+            'total_amount' => 105,
+            'quantity' => 1,
         ]);
 
         $this->assertInstanceOf(TransactionResult::class, $result);
