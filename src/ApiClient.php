@@ -52,32 +52,39 @@ class ApiClient
 
         $this->hitRateLimiter();
 
-        if ($response->ok()) {
-            // json() is null for an empty body or a non-JSON (e.g. WAF/proxy
-            // HTML) body, which folds into [] here and is correctly treated
-            // as a failure below — nothing affirmatively said success.
-            $data = $response->json() ?? [];
-            $success = $data['success'] ?? null;
-            $isBusinessFailure = $success !== true;
+        // json() is null for an empty body or a non-JSON (e.g. WAF/proxy HTML)
+        // body, and a bare scalar for a body like `true` or `123` — both fold
+        // into [] here. Anything that isn't an object/array never affirmatively
+        // said success, so it is correctly treated as a failure below.
+        $body = is_array($response->json()) ? $response->json() : [];
 
-            $this->logResponse($endpoint, $data, $response->status(), $isBusinessFailure);
+        if ($response->ok()) {
+            $isBusinessFailure = ($body['success'] ?? null) !== true;
+
+            $this->logResponse($endpoint, $body, $response->status(), $isBusinessFailure);
 
             if ($isBusinessFailure) {
-                return $this->handleFailure($this->extractApiCode($data), $data);
+                return $this->handleFailure($this->extractApiCode($body), $body);
             }
 
-            return collect($data);
+            return collect($body);
         }
 
+        // A transport/server failure (non-2xx) goes through the same error
+        // layer as a business failure: a 502 on TransactionPayment is exactly
+        // when the caller must not read a null transaction_id and carry on.
+        // The API error code wins when the body carries one; otherwise the
+        // HTTP status stands in (no ErrorCode matches a 3-digit status, so it
+        // falls back to BasataServerException).
         $errorData = [
-            'params' => $params,
+            'params' => $this->withoutCredentials($params),
             'link' => $link,
             'status_code' => $response->status(),
-            ...$response->json() ?? [],
+            ...$body,
         ];
         $this->logResponse($endpoint, $errorData, $response->status(), true);
 
-        return $errorData;
+        return $this->handleFailure($this->extractApiCode($body) ?? $response->status(), $errorData);
     }
 
     /**
@@ -435,8 +442,12 @@ class ApiClient
         $store = Cache::store(config('basata.cache.store'));
         $fullKey = config('basata.cache.prefix', 'basata_') . $key;
 
-        if ($store->has($fullKey)) {
-            return $store->get($fullKey);
+        // Single get(): has()-then-get() can return null if the entry expires
+        // between the two calls, which violates this method's return type.
+        $cached = $store->get($fullKey);
+
+        if ($cached !== null) {
+            return $cached;
         }
 
         $result = $callback();
@@ -458,14 +469,23 @@ class ApiClient
             return;
         }
 
-        $safeParams = $params;
-        unset($safeParams['login'], $safeParams['password']);
-
         Log::channel(config('basata.logging.channel'))
             ->info('Basata API Request', [
                 'endpoint' => $endpoint,
-                'params' => $safeParams,
+                'params' => $this->withoutCredentials($params),
             ]);
+    }
+
+    /**
+     * Single choke point for credential redaction — the request log and the
+     * error payload both go through it, so neither can leak `login`/`password`
+     * into a log line or back to the caller.
+     */
+    protected function withoutCredentials(array $params): array
+    {
+        unset($params['login'], $params['password']);
+
+        return $params;
     }
 
     protected function logResponse(string $endpoint, array $data, int $statusCode, bool $isError = false): void

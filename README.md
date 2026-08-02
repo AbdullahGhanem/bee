@@ -234,9 +234,25 @@ The Basata API returns **HTTP 200 even for a business failure** — for
 example insufficient balance or a transaction already in progress. Success is
 never inferred from the HTTP status; it's read from the response body
 (`"success": true`). Anything else — `"success": false`, a missing `success`
-key, an empty body, or a non-JSON body — is treated as a failure.
+key, an empty body, a scalar body, or a non-JSON body — is treated as a
+failure.
 
-By default, a failure throws a typed exception carrying the API's error code,
+**Exactly one thing means success: an HTTP 2xx whose body says
+`"success": true`.** Everything else — a business failure, *and* a transport
+or server failure (any non-2xx: 401, 404, 502, 504, …) — goes through the same
+error layer and obeys the same `basata.errors.throw` setting. There is no path
+where a 502 quietly returns an array that reads like a response, so
+`$payment['data']['transaction_id']` can never be silently `null` because the
+gateway died — which matters most on `transactionPayment()`, where a 5xx is
+exactly the case where the payment may already have executed.
+
+For a non-2xx the exception's `apiCode` is the API's own error code when the
+body carries one, and otherwise the HTTP status (e.g. `502`); a bare status
+matches no documented code, so it surfaces as `BasataServerException`. The
+`payload` always includes `status_code`, `link`, and the request `params`
+**with `login`/`password` stripped**.
+
+By default, a failure throws a typed exception carrying the error code,
 message, and full payload:
 
 ```php
@@ -262,8 +278,9 @@ sites written against the old array-return contract:
 BASATA_ERRORS_THROW=false
 ```
 
-`basata.errors.throw` only governs how a *response from the API* is handled
-(a business failure in the body, or the client-side rate limiter). It does
+`basata.errors.throw` governs how a *failed request* is handled — a business
+failure in the body, a non-2xx transport/server failure, or the client-side
+rate limiter. It does
 **not** cover pre-flight validation that runs before a request is ever sent —
 a missing `BASATA_TERMINAL_ID` (code 1024) or a missing required field on
 `transactionInquiry()`/`transactionPayment()` (code 1008/1017) always throws,

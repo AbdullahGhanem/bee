@@ -31,6 +31,10 @@ class RetryTest extends TestCase
 
     public function test_returns_response_after_server_error(): void
     {
+        // A 5xx now routes through the error layer like any other failure;
+        // with throwing disabled it still comes back as the raw payload.
+        config()->set('basata.errors.throw', false);
+
         Http::fake([
             'https://api.basata.test/service' => Http::response(['error' => 'Server Error'], 500),
         ]);

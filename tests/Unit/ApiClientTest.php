@@ -3,6 +3,8 @@
 namespace Ghanem\Basata\Tests\Unit;
 
 use Ghanem\Basata\ApiClient;
+use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
+use Ghanem\Basata\Exceptions\BasataServerException;
 use Ghanem\Basata\Exceptions\BasataValidationException;
 use Ghanem\Basata\Tests\TestCase;
 use Illuminate\Support\Collection;
@@ -30,8 +32,10 @@ class ApiClientTest extends TestCase
         $this->assertTrue($result['success']);
     }
 
-    public function test_request_returns_error_array_on_failure(): void
+    public function test_request_returns_error_array_on_failure_when_throwing_is_disabled(): void
     {
+        config()->set('basata.errors.throw', false);
+
         Http::fake([
             'https://api.basata.test/service' => Http::response(['error' => 'Unauthorized'], 401),
         ]);
@@ -41,6 +45,48 @@ class ApiClientTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals(401, $result['status_code']);
         $this->assertEquals('Unauthorized', $result['error']);
+    }
+
+    public function test_a_transport_failure_throws_like_a_business_failure(): void
+    {
+        // A 502 on TransactionPayment is exactly when the payment may already
+        // have executed — it must not come back as a bare array that reads
+        // like a successful response with a null transaction_id.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response(['error' => 'Bad Gateway'], 502),
+        ]);
+
+        try {
+            $this->client->request('service', ['action' => 'Test']);
+            $this->fail('Expected a BasataException');
+        } catch (BasataServerException $e) {
+            $this->assertSame(502, $e->apiCode);
+            $this->assertSame(502, $e->payload['status_code']);
+        }
+    }
+
+    public function test_a_transport_failure_prefers_the_api_error_code_over_the_http_status(): void
+    {
+        Http::fake([
+            'https://api.basata.test/service' => Http::response(['code' => 1016], 500),
+        ]);
+
+        $this->expectException(BasataInsufficientBalanceException::class);
+
+        $this->client->request('service', ['action' => 'Test']);
+    }
+
+    public function test_a_200_response_with_a_scalar_body_is_treated_as_a_failure(): void
+    {
+        // extractApiCode() is typed array — a bare `true`/`123` body used to
+        // reach it unguarded and fatal.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response('123', 200, ['Content-Type' => 'application/json']),
+        ]);
+
+        $this->expectException(BasataServerException::class);
+
+        $this->client->request('service', ['action' => 'Test']);
     }
 
     public function test_request_includes_credentials(): void

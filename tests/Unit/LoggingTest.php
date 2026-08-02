@@ -41,6 +41,8 @@ class LoggingTest extends TestCase
 
     public function test_logs_error_response(): void
     {
+        $this->app['config']->set('basata.errors.throw', false);
+
         Http::fake([
             'https://api.basata.test/service' => Http::response(['error' => 'Bad Request'], 400),
         ]);
@@ -50,12 +52,31 @@ class LoggingTest extends TestCase
         Log::shouldReceive('error')
             ->once()
             ->withArgs(function ($message, $context) {
+                // The error payload echoes back the request params — they must
+                // be redacted there too, not just in the request log.
                 return $message === 'Basata API Response'
-                    && $context['status_code'] === 400;
+                    && $context['status_code'] === 400
+                    && ! isset($context['response']['params']['login'])
+                    && ! isset($context['response']['params']['password']);
             });
 
         $client = new ApiClient();
         $client->request('service', ['action' => 'Test']);
+    }
+
+    public function test_error_payload_returned_to_the_caller_carries_no_credentials(): void
+    {
+        $this->app['config']->set('basata.errors.throw', false);
+        $this->app['config']->set('basata.logging.enabled', false);
+
+        Http::fake([
+            'https://api.basata.test/service' => Http::response(['error' => 'Bad Request'], 400),
+        ]);
+
+        $result = (new ApiClient())->request('service', ['action' => 'Test']);
+
+        $this->assertArrayNotHasKey('login', $result['params']);
+        $this->assertArrayNotHasKey('password', $result['params']);
     }
 
     public function test_does_not_log_credentials(): void

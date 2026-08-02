@@ -67,6 +67,10 @@ class DtoIntegrationTest extends TestCase
 
     public function test_get_transaction_dto_with_error(): void
     {
+        // The DTO error shape only exists when throwing is disabled — a
+        // non-2xx otherwise raises a typed exception like any other failure.
+        config()->set('basata.errors.throw', false);
+
         Http::fake([
             'https://api.basata.test/report' => Http::response([
                 'message' => 'Transaction not found',
