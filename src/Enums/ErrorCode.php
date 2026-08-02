@@ -3,6 +3,7 @@
 namespace Ghanem\Basata\Enums;
 
 use Ghanem\Basata\Exceptions\BasataAuthenticationException;
+use Ghanem\Basata\Exceptions\BasataDuplicateTransactionIdException;
 use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
 use Ghanem\Basata\Exceptions\BasataNotFoundException;
 use Ghanem\Basata\Exceptions\BasataRateLimitException;
@@ -116,7 +117,8 @@ enum ErrorCode: int
      * not explicitly place 1019, 1023, 1025, 1028 and 1029 into a group;
      * they are client-side/business-rule validation failures (unsupported
      * feature, duplicate submission, stale version, card already used or
-     * expired), so they are grouped under BasataValidationException here.
+     * expired), so they are grouped under BasataValidationException here —
+     * 1023 via its own subclass, see below.
      */
     public function exceptionClass(): string
     {
@@ -140,7 +142,6 @@ enum ErrorCode: int
             self::WrongServiceCharge,
             self::TerminalIdRequired,
             self::ServiceHasNotInquiryFeature,
-            self::DuplicateTransactionId,
             self::IncorrectServiceVersion,
             self::BeecardIsUsed,
             self::BeecardIsExpired,
@@ -149,6 +150,11 @@ enum ErrorCode: int
             self::InvalidHttpContent,
             self::UnsupportedHttpMethod,
             self::InvalidUrlPath => BasataValidationException::class,
+
+            // A subclass of BasataValidationException, not a new group: 1023
+            // is separately catchable because FAQ A10 (p.21) makes it the one
+            // "validation" error that can mean the payment SUCCEEDED.
+            self::DuplicateTransactionId => BasataDuplicateTransactionIdException::class,
 
             self::InsufficientBalance => BasataInsufficientBalanceException::class,
 

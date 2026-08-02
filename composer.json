@@ -3,7 +3,7 @@
     "type": "library",
     "description": "A Laravel package that provides an interface to the Basata payment services API.",
     "keywords": ["Laravel", "PHP", "Basata", "API", "Payment"],
-    "homepage": "https://github.com/abdullahghanem/basata",
+    "homepage": "https://github.com/gaitco/basata",
     "license": "MIT",
     "authors": [
         {

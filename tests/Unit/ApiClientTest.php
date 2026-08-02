@@ -154,7 +154,7 @@ class ApiClientTest extends TestCase
             ], 200),
         ]);
 
-        $result = $this->client->getProviderList(5, 'en');
+        $result = $this->client->getProviderList('en');
 
         $this->assertInstanceOf(Collection::class, $result);
         Http::assertSent(fn ($r) => $r->data()['action'] === 'GetProviderList');

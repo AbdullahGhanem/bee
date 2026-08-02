@@ -44,7 +44,7 @@ class BasataServiceTest extends TestCase
             ], 200),
         ]);
 
-        $result = Basata::getProviderList(3, 'ar');
+        $result = Basata::getProviderList('ar');
 
         $this->assertInstanceOf(Collection::class, $result);
     }
@@ -136,6 +136,27 @@ class BasataServiceTest extends TestCase
 
         $this->assertInstanceOf(Collection::class, $result);
         Http::assertSentCount(2);
+    }
+
+    public function test_a_caller_supplied_service_version_skips_the_provider_list_call(): void
+    {
+        // FAQ A1: the terminal should store service_version and check it
+        // periodically, not force a service-list refresh per transaction.
+        Http::fake([
+            'https://api.basata.test/transaction' => Http::response([
+                'success' => true,
+                'data' => ['transaction_id' => 100],
+            ], 200),
+        ]);
+
+        Basata::transactionInquiry([
+            'service_version' => 7,
+            'account_number' => '123',
+            'service_id' => 10,
+        ]);
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => $r->data()['data']['service_version'] === 7);
     }
 
     public function test_calculate_service_charge_via_facade(): void

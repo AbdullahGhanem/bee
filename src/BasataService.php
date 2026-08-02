@@ -32,9 +32,9 @@ class BasataService
         return $this->client->getCategoryServiceList($lang);
     }
 
-    public function getProviderList(int $categoryId = 2, ?string $lang = null): Collection|array
+    public function getProviderList(?string $lang = null): Collection|array
     {
-        return $this->client->getProviderList($categoryId, $lang);
+        return $this->client->getProviderList($lang);
     }
 
     public function getServiceList(?string $lang = null): Collection|array
@@ -69,18 +69,31 @@ class BasataService
 
     public function transactionInquiry(array $data, ?string $lang = null): Collection|array
     {
-        $providerList = $this->client->getProviderList(2, $lang);
-        $data['service_version'] = $providerList['data']['service_version'];
+        $data['service_version'] = $this->resolveServiceVersion($data, $lang);
 
         return $this->client->transactionInquiry($data, $lang);
     }
 
     public function transactionPayment(array $data, ?string $lang = null): Collection|array
     {
-        $providerList = $this->client->getProviderList(2, $lang);
-        $data['service_version'] = $providerList['data']['service_version'];
+        $data['service_version'] = $this->resolveServiceVersion($data, $lang);
 
         return $this->client->transactionPayment($data, $lang);
+    }
+
+    /**
+     * FAQ A1: the terminal is supposed to store service_version and check it
+     * periodically, not re-fetch it before every transaction — so a
+     * caller-supplied value wins, and the fallback lookup is served from the
+     * cached getProviderList().
+     */
+    protected function resolveServiceVersion(array $data, ?string $lang): mixed
+    {
+        if (($data['service_version'] ?? null) !== null && $data['service_version'] !== '') {
+            return $data['service_version'];
+        }
+
+        return $this->client->getProviderList($lang)['data']['service_version'] ?? null;
     }
 
     public function calculateServiceCharge(array $data): array

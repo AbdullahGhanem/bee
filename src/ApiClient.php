@@ -172,15 +172,26 @@ class ApiClient
         return ApiResponse::fromError($result, $result['status_code'] ?? 500);
     }
 
-    public function getProviderList(int $categoryId = 2, ?string $lang = null, ?string $terminalId = null): Collection|array
+    /**
+     * PDF 5.1: the action takes `service_version` only — there is no category
+     * filter, so the old `$categoryId` argument was accepted and silently
+     * dropped. Sending `service_version: 0` means "force update the service
+     * list", which FAQ A1 says to avoid doing routinely ("store this value…
+     * check it periodically"), so the response is cached like the other
+     * catalogue calls. Call `clearCache('provider_list_en')` (or
+     * `clearCache()`) to force a refresh.
+     */
+    public function getProviderList(?string $lang = null, ?string $terminalId = null): Collection|array
     {
-        return $this->request('service', [
-            'terminal_id' => $terminalId,
-            'action' => 'GetProviderList',
-            'version' => 2,
-            'language' => $lang,
-            'data' => ['service_version' => 0],
-        ]);
+        return $this->cached('provider_list_' . $this->resolveLanguage($lang), function () use ($lang, $terminalId) {
+            return $this->request('service', [
+                'terminal_id' => $terminalId,
+                'action' => 'GetProviderList',
+                'version' => 2,
+                'language' => $lang,
+                'data' => ['service_version' => 0],
+            ]);
+        });
     }
 
     public function getServiceList(?string $lang = null, ?string $terminalId = null): Collection|array
@@ -453,6 +464,7 @@ class ApiClient
         }
 
         $cacheKeys = [
+            'provider_list_en', 'provider_list_ar',
             'category_list_en', 'category_list_ar',
             'category_service_list_en', 'category_service_list_ar',
             'service_list_en', 'service_list_ar',

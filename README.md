@@ -57,8 +57,9 @@ $categories = Basata::getCategoryList();
 // Get category service list
 $categoryServices = Basata::getCategoryServiceList();
 
-// Get provider list by category
-$providers = Basata::getProviderList(categoryId: 2);
+// Get the provider list (spec 5.1 takes no filter — the old $categoryId
+// argument was accepted and silently ignored, and is gone in this release)
+$providers = Basata::getProviderList();
 
 // Get all services
 $services = Basata::getServiceList();
@@ -109,6 +110,18 @@ $transaction = Basata::getTransaction('order-001', 'external_id');
 request, so you don't need to pass it yourself. This auto-fill only happens
 through the facade/`BasataService` — `getBillsAmount()` and any direct
 `ApiClient` usage do not get it and must supply `service_version` explicitly.
+
+**Pass your own `service_version` when you have one.** `GetProviderList`
+sends `service_version: 0`, which spec 5.1 defines as *"force update the
+service list"* and FAQ A1 explicitly tells terminals not to do routinely
+("store this value… check it periodically"). So:
+
+- a `service_version` you pass in the `$data` array wins and skips the lookup
+  entirely;
+- otherwise the lookup runs, but the response is cached like the other
+  catalogue calls (`provider_list_{lang}`), so it is not one force-refresh per
+  transaction. Call `Basata::clearCache('provider_list_en')` (or the API's
+  error 1025 "Incorrect service version") to refresh it.
 
 ### Prepaid Card Recharge Confirmation
 
@@ -310,7 +323,8 @@ code falls back to `BasataServerException` rather than being swallowed.
 | Exception | Example codes |
 |---|---|
 | `BasataAuthenticationException` | 1001 login required, 1002 password required, 1003 incorrect credentials, 1010 invalid user, 1012 change password required, 1013 permission denied |
-| `BasataValidationException` | 1004–1009, 1011 (language required), 1017 (wrong amount), 1020, 1022, 1024 (**terminal_id required**), 1025, 1023, 1019, 1028, 1029, 2001–2005 |
+| `BasataValidationException` | 1004–1009, 1011 (language required), 1017 (wrong amount), 1020, 1022, 1024 (**terminal_id required**), 1025, 1019, 1028, 1029, 2001–2005 |
+| `BasataDuplicateTransactionIdException` (**extends** `BasataValidationException`) | 1023 — see [Ambiguous payments](#ambiguous-payments-retries-error-1023-and-faq-a10) |
 | `BasataInsufficientBalanceException` | 1016 |
 | `BasataRateLimitException` | 1033 |
 | `BasataTransactionInProgressException` | 1034 |
@@ -321,6 +335,37 @@ code falls back to `BasataServerException` rather than being swallowed.
 > physical prepaid card. That naming is kept verbatim rather than renamed to
 > "Basatacard".
 
+### Ambiguous payments: retries, error 1023, and FAQ A10
+
+Requests are retried on **connection failure** (see
+[Retry Mechanism](#retry-mechanism)) — including payments. If the connection
+drops *after* Basata processed the payment, the retry re-posts the same
+`external_id` and the API answers **1023 "Duplicate transaction ID"**. That
+looks like a validation error but very often means *your payment succeeded*.
+
+Per spec FAQ A10 (p.21), resolve the ambiguity by asking for the transaction
+by your own ID rather than assuming either outcome:
+
+```php
+use Ghanem\Basata\Exceptions\BasataDuplicateTransactionIdException;
+
+try {
+    $payment = Basata::transactionPayment($data); // $data['external_id'] = 'order-001'
+} catch (BasataDuplicateTransactionIdException $e) {
+    // Do NOT re-submit with a new external_id — ask what happened first.
+    $existing = Basata::getTransaction('order-001', 'external_id');
+    $status = $existing['data']['transaction_details']['status'] ?? null;
+    // SUCCESS -> the payment went through; ERROR/DEPOSIT_ERROR -> it did not.
+}
+```
+
+`BasataDuplicateTransactionIdException` extends `BasataValidationException`,
+so existing `catch (BasataValidationException)` blocks still catch it — but
+catching it on its own lets you run the reconciliation above instead of
+treating it as a caller bug. The same lookup is the right response to any
+payment whose outcome you are unsure of (a timeout, a 5xx, a lost response):
+always use a stable, caller-generated `external_id` so it stays answerable.
+
 ### Main error codes
 
 | Code | Name | Meaning |
@@ -330,7 +375,7 @@ code falls back to `BasataServerException` rather than being swallowed.
 | 1016 | InsufficientBalance | Terminal balance too low for the transaction |
 | 1017 | WrongAmount | `amount`/`total_amount` missing or invalid |
 | 1022 | WrongServiceCharge | Submitted `service_charge` doesn't match the server's calculation |
-| 1023 | DuplicateTransactionId | `external_id` was already used |
+| 1023 | DuplicateTransactionId | `external_id` was already used — **may mean the payment succeeded**, see [Ambiguous payments](#ambiguous-payments-retries-error-1023-and-faq-a10) |
 | 1024 | TerminalIdRequired | `terminal_id` missing — thrown client-side before the request is even sent if `BASATA_TERMINAL_ID` is unset |
 | 1026 | TransactionNotFound | No transaction matches the given ID |
 | 1033 | RateLimitExceeded | Client-side rate limiter tripped (see [Rate Limiting](#rate-limiting)) |
@@ -347,12 +392,23 @@ exact spec wording.
 ```php
 use Ghanem\Basata\Enums\TransactionStatus;
 
-$status = TransactionStatus::from($transaction['data']['status']);
+$transaction = Basata::getTransaction(123);
+
+// GetTransactionDetails nests the record under `transaction_details`
+// (spec 5.11) — NOT directly under `data`.
+$status = TransactionStatus::from($transaction['data']['transaction_details']['status']);
 
 if ($status->isFinal()) {
     // stop polling
 }
 ```
+
+> **This enum models the string statuses only** — the ones returned by
+> `GetTransactionDetails`/`GetTransactionByExternalId` and by
+> `TransactionPayment` (spec 4.9/4.10/5.11). Spec §5.7 types the
+> **`TransactionInquiry`** response's `status` as an *Integer* (`0, 1, 2, 3,
+> 5, 6`), so `TransactionStatus::from()` will not parse an inquiry response.
+> Don't pass one to it.
 
 | Status | Final? |
 |---|---|
@@ -387,7 +443,8 @@ BASATA_LOG_CHANNEL=stack   # Optional: specific log channel
 
 ### Caching
 
-Service and category lists are automatically cached to reduce API calls:
+The provider, service and category lists are automatically cached to reduce
+API calls (transactions and reports never are):
 
 ```env
 BASATA_CACHE_ENABLED=true    # Enabled by default
@@ -570,6 +627,14 @@ inspected `$result['success']` or relied on exceptions never being thrown
 for these cases must be updated — see [Error Handling](#error-handling), or
 set `BASATA_ERRORS_THROW=false` to keep the old array-return behavior while
 you migrate call sites incrementally.
+
+### ⚠️ `getProviderList()` no longer takes a category ID
+
+`getProviderList(int $categoryId = 2, ?string $lang = null)` is now
+`getProviderList(?string $lang = null)`. Spec 5.1 defines the action as taking
+`service_version` only — the argument was accepted, documented, and never sent
+anywhere. Drop it from your call sites; a positional `getProviderList(2)` now
+passes `2` as the language.
 
 ### ⚠️ Missing required transaction fields now throw
 

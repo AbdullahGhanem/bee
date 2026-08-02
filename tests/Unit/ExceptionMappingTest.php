@@ -4,6 +4,7 @@ namespace Ghanem\Basata\Tests\Unit;
 
 use Ghanem\Basata\Enums\TransactionStatus;
 use Ghanem\Basata\Exceptions\BasataAuthenticationException;
+use Ghanem\Basata\Exceptions\BasataDuplicateTransactionIdException;
 use Ghanem\Basata\Exceptions\BasataException;
 use Ghanem\Basata\Exceptions\BasataInsufficientBalanceException;
 use Ghanem\Basata\Exceptions\BasataNotFoundException;
@@ -32,6 +33,11 @@ class ExceptionMappingTest extends TestCase
     {
         yield 'auth' => [1003, BasataAuthenticationException::class, 'Incorrect login or password'];
         yield 'validation' => [1017, BasataValidationException::class, 'Wrong amount'];
+        // 1023 is separately catchable (FAQ A10: it can mean the payment
+        // actually succeeded) but must still satisfy a catch on the base
+        // validation class — the provider asserts instanceof, not identity.
+        yield 'duplicate-external-id' => [1023, BasataDuplicateTransactionIdException::class, 'Duplicate transaction ID'];
+        yield 'duplicate-external-id-is-still-a-validation-error' => [1023, BasataValidationException::class, 'Duplicate transaction ID'];
         yield 'insufficient-balance' => [1016, BasataInsufficientBalanceException::class, 'Insufficient balance'];
         yield 'rate-limit' => [1033, BasataRateLimitException::class, 'Rate limit exceeded'];
         yield 'in-progress' => [1034, BasataTransactionInProgressException::class, 'Transaction is in progress, please try again later'];

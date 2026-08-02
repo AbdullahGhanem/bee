@@ -77,6 +77,23 @@ class CachingTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_provider_list_is_cached(): void
+    {
+        // GetProviderList sends service_version: 0 = "force update the service
+        // list", which FAQ A1 says not to do routinely.
+        Http::fake([
+            'https://api.basata.test/service' => Http::response([
+                'success' => true,
+                'data' => ['service_version' => 3],
+            ], 200),
+        ]);
+
+        Basata::getProviderList();
+        Basata::getProviderList();
+
+        Http::assertSentCount(1);
+    }
+
     public function test_different_languages_cached_separately(): void
     {
         Http::fake([
