@@ -1,3 +1,5 @@
+<p align="center"><img src="art/banner.png" alt="Laravel Basata — Basata Cash Collector API client — inquiry, payment, recharge and service catalogue." width="100%"></p>
+
 # Basata
 
 [![Latest Stable Version](https://poser.pugx.org/ghanem/basata/v/stable.svg)](https://packagist.org/packages/ghanem/basata) [![License](https://poser.pugx.org/ghanem/basata/license.svg)](https://packagist.org/packages/ghanem/basata) [![Total Downloads](https://poser.pugx.org/ghanem/basata/downloads.svg)](https://packagist.org/packages/ghanem/basata)
